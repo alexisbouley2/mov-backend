@@ -40,6 +40,7 @@ model Event {
   date        DateTime
   createdAt   DateTime @default(now())
   location    String?
+  photo       String?
 
   admin       User     @relation("AdminRelation", fields: [adminId], references: [id])
   adminId     String

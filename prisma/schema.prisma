@@ -35,8 +35,8 @@ model Video {
 
 model Event {
   id          String   @id @default(uuid())
-  name        String
-  description String?
+  name        String?
+  information String?
   date        DateTime
   createdAt   DateTime @default(now())
   location    String?

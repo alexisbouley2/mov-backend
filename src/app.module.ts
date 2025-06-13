@@ -1,10 +1,11 @@
-import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaService } from './prisma/prisma.service';
 import { UsersModule } from './users/users.module';
 import { EventsModule } from './events/events.module';
 import { VideosModule } from './videos/videos.module';
 import { EventParticipantsModule } from './event-participants/event-participants.module';
+import { Module, MiddlewareConsumer } from '@nestjs/common';
+import { LoggerMiddleware } from './middleware/logger.middleware';
 
 @Module({
   imports: [
@@ -16,4 +17,8 @@ import { EventParticipantsModule } from './event-participants/event-participants
   ],
   providers: [PrismaService],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}

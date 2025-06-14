@@ -42,4 +42,20 @@ export class EventsController {
   remove(@Param('id') id: string) {
     return this.eventsService.remove(id);
   }
+
+  @Post(':eventId/participants/:userId')
+  addParticipant(
+    @Param('eventId') eventId: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.eventsService.addParticipant(eventId, userId);
+  }
+
+  @Delete(':eventId/participants/:userId')
+  removeParticipant(
+    @Param('eventId') eventId: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.eventsService.removeParticipant(eventId, userId);
+  }
 }

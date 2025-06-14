@@ -93,4 +93,70 @@ export class EventsService {
 
     return categorized;
   }
+
+  async addParticipant(eventId: string, userId: string) {
+    try {
+      // Check if participant already exists
+      const existingParticipant = await this.prisma.eventParticipant.findUnique(
+        {
+          where: {
+            userId_eventId: {
+              userId,
+              eventId,
+            },
+          },
+        },
+      );
+
+      if (existingParticipant) {
+        throw new Error('User is already a participant');
+      }
+
+      // Add the participant
+      await this.prisma.eventParticipant.create({
+        data: {
+          userId,
+          eventId,
+        },
+      });
+
+      return { message: 'Participant added successfully' };
+    } catch (error) {
+      throw new Error(`Failed to add participant: ${error}`);
+    }
+  }
+
+  async removeParticipant(eventId: string, userId: string) {
+    try {
+      // Check if participant exists
+      const existingParticipant = await this.prisma.eventParticipant.findUnique(
+        {
+          where: {
+            userId_eventId: {
+              userId,
+              eventId,
+            },
+          },
+        },
+      );
+
+      if (!existingParticipant) {
+        throw new Error('User is not a participant');
+      }
+
+      // Remove the participant
+      await this.prisma.eventParticipant.delete({
+        where: {
+          userId_eventId: {
+            userId,
+            eventId,
+          },
+        },
+      });
+
+      return { message: 'Participant removed successfully' };
+    } catch (error) {
+      throw new Error(`Failed to remove participant: ${error}`);
+    }
+  }
 }

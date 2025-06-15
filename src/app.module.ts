@@ -6,13 +6,15 @@ import { VideosModule } from './videos/videos.module';
 import { EventParticipantsModule } from './event-participants/event-participants.module';
 import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { LoggerMiddleware } from './middleware/logger.middleware';
+import { MediaModule } from './media/media.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({ isGlobal: true }),
     UsersModule,
     EventsModule,
     VideosModule,
+    MediaModule,
     EventParticipantsModule,
   ],
   providers: [PrismaService],

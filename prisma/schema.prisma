@@ -23,14 +23,17 @@ model User {
   eventParticipants EventParticipant[]
 }
 
+
 model Video {
-  id          String   @id @default(uuid())
-  storagePath String
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id])
-  userId      String
-  event       Event    @relation(fields: [eventId], references: [id])
-  eventId     String
+  id            String   @id @default(uuid())
+  storagePath   String
+  thumbnailPath String?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String
+  event         Event?    @relation(fields: [eventId], references: [id])
+  eventId       String?
+  status        String   @default("pending") // "pending" | "published"
 }
 
 model Event {

@@ -5,18 +5,47 @@ import {
   BadRequestException,
   Delete,
   Param,
+  Get,
+  Query,
 } from '@nestjs/common';
 import { VideosService } from './videos.service';
 import { MediaService } from '../media/media.service';
 
-// DTOs pour validation
+// Add interface at the top of the file after imports
+interface VideoWithUrls {
+  id: string;
+  storagePath: string;
+  thumbnailPath: string;
+  videoUrl: string;
+  thumbnailUrl: string;
+  createdAt: Date;
+  user: {
+    id: string;
+    username: string;
+    photo: string | null;
+  };
+}
+
+interface VideoFeedResult {
+  videos: VideoWithUrls[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+// DTOs for validation
 interface GetUploadUrlDto {
   userId: string;
   contentType: string; // "video/mp4"
 }
 
+interface GetThumbnailUrlDto {
+  userId: string;
+  contentType: string; // "image/jpeg"
+}
+
 interface ConfirmUploadDto {
   fileName: string;
+  thumbnailFileName: string;
   userId: string;
 }
 
@@ -46,11 +75,11 @@ export class VideosController {
 
   /**
    * POST /videos/upload-url
-   * Génère une presigned URL pour upload direct
+   * Generate presigned URL for video upload
    */
   @Post('upload-url')
   async getUploadUrl(@Body() body: GetUploadUrlDto) {
-    console.log('Generating upload URL for:', body);
+    console.log('Generating video upload URL for:', body);
 
     if (!body.userId) {
       throw new BadRequestException('userId is required');
@@ -63,42 +92,88 @@ export class VideosController {
     try {
       const result = await this.mediaService.generateUploadUrl(body.userId);
 
-      console.log('Generated upload URL for file:', result.fileName);
+      console.log('Generated video upload URL for file:', result.fileName);
 
       return {
         success: true,
         ...result,
       };
     } catch (error) {
-      console.error('Error generating upload URL:', error);
-      throw new BadRequestException('Failed to generate upload URL');
+      console.error('Error generating video upload URL:', error);
+      throw new BadRequestException('Failed to generate video upload URL');
+    }
+  }
+
+  /**
+   * POST /videos/thumbnail-url
+   * Generate presigned URL for thumbnail upload
+   */
+  @Post('thumbnail-url')
+  async getThumbnailUploadUrl(@Body() body: GetThumbnailUrlDto) {
+    console.log('Generating thumbnail upload URL for:', body);
+
+    if (!body.userId) {
+      throw new BadRequestException('userId is required');
+    }
+
+    if (!body.contentType || body.contentType !== 'image/jpeg') {
+      throw new BadRequestException('contentType must be image/jpeg');
+    }
+
+    try {
+      const result = await this.mediaService.generateThumbnailUploadUrl(
+        body.userId,
+      );
+
+      console.log('Generated thumbnail upload URL for file:', result.fileName);
+
+      return {
+        success: true,
+        ...result,
+      };
+    } catch (error) {
+      console.error('Error generating thumbnail upload URL:', error);
+      throw new BadRequestException('Failed to generate thumbnail upload URL');
     }
   }
 
   /**
    * POST /videos/confirm-upload
-   * Confirme l'upload et sauvegarde en base
+   * Confirm upload and save to database with thumbnail
    */
   @Post('confirm-upload')
   async confirmUpload(@Body() body: ConfirmUploadDto) {
     console.log('Confirming upload for:', body);
 
-    if (!body.fileName || !body.userId) {
-      throw new BadRequestException('fileName and userId are required');
+    if (!body.fileName || !body.thumbnailFileName || !body.userId) {
+      throw new BadRequestException(
+        'fileName, thumbnailFileName and userId are required',
+      );
     }
 
     try {
-      // Optionnel: Vérifier que le fichier existe sur R2
-      const fileExists = await this.mediaService.fileExists(body.fileName);
-      if (!fileExists) {
-        throw new BadRequestException('File not found on cloud storage');
+      // Check if both files exist on R2
+      const [videoExists, thumbnailExists] = await Promise.all([
+        this.mediaService.fileExists(body.fileName),
+        this.mediaService.fileExists(body.thumbnailFileName),
+      ]);
+
+      if (!videoExists) {
+        throw new BadRequestException('Video file not found on cloud storage');
       }
 
-      // Sauvegarder en base avec status "pending"
+      if (!thumbnailExists) {
+        throw new BadRequestException(
+          'Thumbnail file not found on cloud storage',
+        );
+      }
+
+      // Save to database with status "pending"
       const video = await this.videosService.create({
         storagePath: body.fileName,
+        thumbnailPath: body.thumbnailFileName,
         userId: body.userId,
-        status: 'pending', // Will be updated when events are associated
+        status: 'pending',
       });
 
       console.log('Video saved to database:', video.id);
@@ -120,6 +195,40 @@ export class VideosController {
   }
 
   /**
+   * GET /videos/feed/:eventId
+   * Get paginated video feed for an event
+   */
+  @Get('feed/:eventId')
+  async getEventVideoFeed(
+    @Param('eventId') eventId: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limitParam?: string,
+    @Query('userId') userId?: string, // Optional: filter by specific user
+  ): Promise<{ success: boolean } & VideoFeedResult> {
+    const limit = limitParam ? parseInt(limitParam, 10) : 20;
+
+    if (limit > 50) {
+      throw new BadRequestException('Limit cannot exceed 50');
+    }
+
+    try {
+      const result = await this.videosService.getEventVideoFeed(eventId, {
+        cursor,
+        limit,
+        userId,
+      });
+
+      return {
+        success: true,
+        ...result,
+      };
+    } catch (error) {
+      console.error('Error fetching video feed:', error);
+      throw new BadRequestException('Failed to fetch video feed');
+    }
+  }
+
+  /**
    * POST /videos/associate-events
    * Associate video with events and mark as published
    */
@@ -134,19 +243,16 @@ export class VideosController {
     }
 
     try {
-      // Find the video by storagePath
       const video = await this.videosService.findByStoragePath(body.fileName);
 
       if (!video) {
         throw new BadRequestException('Video not found');
       }
 
-      // Verify the video belongs to the user
       if (video.userId !== body.userId) {
         throw new BadRequestException('Unauthorized');
       }
 
-      // Update video with events and set status to published
       const updatedVideo = await this.videosService.associateWithEvents(
         video.id,
         body.eventIds,
@@ -183,7 +289,6 @@ export class VideosController {
     }
 
     try {
-      // Verify the video exists and belongs to the user
       const video = await this.videosService.findById(body.videoId);
 
       if (!video) {
@@ -194,7 +299,6 @@ export class VideosController {
         throw new BadRequestException('Unauthorized');
       }
 
-      // Remove from events
       const result = await this.videosService.removeFromEvents(
         body.videoId,
         body.eventIds,
@@ -228,7 +332,8 @@ export class VideosController {
   /**
    * POST /videos/delete
    * Delete video from R2 and database (only if no event associations)
-   */ @Post('delete')
+   */
+  @Post('delete')
   async deleteVideo(@Body() body: DeleteVideoDto) {
     console.log('Deleting video:', body);
 
@@ -237,7 +342,6 @@ export class VideosController {
     }
 
     try {
-      // Find video
       const video = await this.videosService.findByStoragePath(body.fileName);
 
       if (!video) {
@@ -248,14 +352,12 @@ export class VideosController {
         throw new BadRequestException('Unauthorized');
       }
 
-      // Check if video has event associations
       if (video.events && video.events.length > 0) {
         throw new BadRequestException(
           'Cannot delete video that is associated with events. Remove from events first.',
         );
       }
 
-      // Delete video (will also delete from R2)
       await this.videosService.delete(video.id);
 
       return {
@@ -288,7 +390,6 @@ export class VideosController {
     }
 
     try {
-      // Verify the video exists and belongs to the user
       const video = await this.videosService.findById(videoId);
 
       if (!video) {
@@ -299,7 +400,6 @@ export class VideosController {
         throw new BadRequestException('Unauthorized');
       }
 
-      // Remove from single event
       const result = await this.videosService.removeFromEvents(videoId, [
         eventId,
       ]);

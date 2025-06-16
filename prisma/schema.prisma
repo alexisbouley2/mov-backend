@@ -24,7 +24,7 @@ model User {
 model Video {
   id            String   @id @default(uuid())
   storagePath   String  @unique
-  thumbnailPath String?
+  thumbnailPath String   // Now required
   createdAt     DateTime @default(now())
   user          User     @relation(fields: [userId], references: [id])
   userId        String
@@ -32,6 +32,10 @@ model Video {
   
   // Many-to-many relationship with events
   events        VideoEvent[]
+
+  // Indexes for feed performance
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 model Event {
@@ -63,6 +67,7 @@ model VideoEvent {
   @@unique([videoId, eventId])
   @@index([videoId])
   @@index([eventId])
+  @@index([eventId, addedAt]) // For feed queries
 }
 
 model EventParticipant {

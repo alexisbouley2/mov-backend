@@ -12,6 +12,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { CleanupService } from './tasks/cleanup.service';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CleanupService } from './tasks/cleanup.service';
     EventsModule,
     VideosModule,
     MediaModule,
+    ChatModule,
     EventParticipantsModule,
   ],
   controllers: [AppController],

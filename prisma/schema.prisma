@@ -1,6 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
+// Fixed Prisma schema with mandatory chat creation
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -19,6 +17,9 @@ model User {
   videos    Video[]
   adminEvents Event[] @relation("AdminRelation")
   eventParticipants EventParticipant[]
+  
+  // Chat relations
+  sentMessages Message[] @relation("MessageSender")
 }
 
 model Video {
@@ -54,6 +55,9 @@ model Event {
   
   // Many-to-many relationship with videos
   videos      VideoEvent[]
+  
+  // Optional chat - created lazily when first user opens chat
+  chat        Chat?    @relation("EventChat")
 }
 
 model VideoEvent {
@@ -79,4 +83,55 @@ model EventParticipant {
   joinedAt  DateTime @default(now())
 
   @@unique([userId, eventId], name: "userId_eventId")
+}
+
+// Chat belongs to an event - created lazily
+model Chat {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Each chat belongs to exactly one event
+  event     Event    @relation("EventChat", fields: [eventId], references: [id], onDelete: Cascade)
+  eventId   String   @unique
+  
+  messages  Message[]
+  
+  @@index([eventId])
+  @@index([createdAt])
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  
+  chatId    String
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  
+  senderId  String
+  sender    User     @relation("MessageSender", fields: [senderId], references: [id])
+  
+  // Message type (text, image, etc.) - extensible for future features
+  type      String   @default("text") // "text", "image", "video"
+  
+  // For read receipts (optional)
+  readBy    MessageRead[]
+  
+  @@index([chatId, createdAt])
+  @@index([senderId])
+}
+
+// Optional: For read receipts functionality
+model MessageRead {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+  
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
 }

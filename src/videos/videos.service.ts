@@ -133,13 +133,13 @@ export class VideosService {
           const { videoUrl, thumbnailUrl } =
             await this.mediaService.getVideoUrls(
               video.storagePath,
-              video.thumbnailPath!,
+              video.thumbnailPath,
             );
 
           return {
             id: video.id,
             storagePath: video.storagePath,
-            thumbnailPath: video.thumbnailPath!,
+            thumbnailPath: video.thumbnailPath,
             videoUrl,
             thumbnailUrl,
             createdAt: video.createdAt,

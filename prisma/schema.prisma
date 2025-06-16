@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -13,6 +10,7 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 model User {
   id        String   @id @default(uuid())
   phone     String   @unique
@@ -23,17 +21,17 @@ model User {
   eventParticipants EventParticipant[]
 }
 
-
 model Video {
   id            String   @id @default(uuid())
-  storagePath   String
+  storagePath   String  @unique
   thumbnailPath String?
   createdAt     DateTime @default(now())
   user          User     @relation(fields: [userId], references: [id])
   userId        String
-  event         Event?    @relation(fields: [eventId], references: [id])
-  eventId       String?
   status        String   @default("pending") // "pending" | "published"
+  
+  // Many-to-many relationship with events
+  events        VideoEvent[]
 }
 
 model Event {
@@ -48,10 +46,23 @@ model Event {
   admin       User     @relation("AdminRelation", fields: [adminId], references: [id])
   adminId     String
 
-
   participants EventParticipant[]
+  
+  // Many-to-many relationship with videos
+  videos      VideoEvent[]
+}
 
-  videos      Video[]
+model VideoEvent {
+  id        String   @id @default(uuid())
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId   String
+  addedAt   DateTime @default(now())
+  
+  @@unique([videoId, eventId])
+  @@index([videoId])
+  @@index([eventId])
 }
 
 model EventParticipant {

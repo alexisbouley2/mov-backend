@@ -31,7 +31,15 @@ export class EventsService {
       include: {
         admin: true,
         participants: { include: { user: true } },
-        videos: { include: { user: true } },
+        videos: {
+          include: {
+            video: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        },
       },
     });
   }

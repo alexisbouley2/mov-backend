@@ -1,16 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import {
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3Client, BUCKET_NAME } from '../config/s3.config';
 import { v4 as uuidv4 } from 'uuid';
-// import sharp from 'sharp'; // Default import instead of namespace import
-// import ffmpeg from 'fluent-ffmpeg';
-// import * as fs from 'fs';
-// import * as path from 'path';
-// import * as os from 'os';
 
 @Injectable()
 export class MediaService {
+  /**
+   * Generate presigned URL for upload
+   */
   async generateUploadUrl(userId: string): Promise<{
     uploadUrl: string;
     fileName: string;
@@ -29,7 +31,7 @@ export class MediaService {
     });
 
     const uploadUrl = await getSignedUrl(s3Client, command, {
-      expiresIn: 3600, // 1 heure
+      expiresIn: 3600, // 1 hour
     });
 
     return {
@@ -40,7 +42,7 @@ export class MediaService {
   }
 
   /**
-   * Vérifie qu'un fichier existe sur R2 (optionnel, pour validation)
+   * Check if a file exists on R2
    */
   async fileExists(fileName: string): Promise<boolean> {
     try {
@@ -52,8 +54,78 @@ export class MediaService {
       await s3Client.send(command);
       return true;
     } catch (error) {
-      console.error(error);
+      console.error('File existence check error:', error);
       return false;
     }
+  }
+
+  /**
+   * Delete a file from R2
+   */
+  async deleteFile(fileName: string): Promise<void> {
+    try {
+      console.log(`Deleting file from R2: ${fileName}`);
+
+      const command = new DeleteObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: fileName,
+      });
+
+      await s3Client.send(command);
+
+      console.log(`File deleted successfully: ${fileName}`);
+    } catch (error) {
+      console.error(`Error deleting file ${fileName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate signed URL for viewing/downloading
+   */
+  async getSignedViewUrl(fileName: string): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileName,
+    });
+
+    return getSignedUrl(s3Client, command, {
+      expiresIn: 3600, // 1 hour
+    });
+  }
+
+  /**
+   * Generate thumbnail presigned URL for upload
+   */
+  async generateThumbnailUploadUrl(
+    userId: string,
+    videoId: string,
+  ): Promise<{
+    uploadUrl: string;
+    fileName: string;
+    expiresIn: number;
+  }> {
+    const fileName = `thumbnails/${userId}/${videoId}_thumb.jpg`;
+
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileName,
+      ContentType: 'image/jpeg',
+      Metadata: {
+        userId,
+        videoId,
+        uploadedAt: new Date().toISOString(),
+      },
+    });
+
+    const uploadUrl = await getSignedUrl(s3Client, command, {
+      expiresIn: 3600, // 1 hour
+    });
+
+    return {
+      uploadUrl,
+      fileName,
+      expiresIn: 3600,
+    };
   }
 }

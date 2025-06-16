@@ -7,9 +7,16 @@ import { EventParticipantsModule } from './event-participants/event-participants
 import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { LoggerMiddleware } from './middleware/logger.middleware';
 import { MediaModule } from './media/media.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { PrismaModule } from './prisma/prisma.module';
+import { CleanupService } from './tasks/cleanup.service';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
+    PrismaModule,
     ConfigModule.forRoot({ isGlobal: true }),
     UsersModule,
     EventsModule,
@@ -17,7 +24,8 @@ import { MediaModule } from './media/media.module';
     MediaModule,
     EventParticipantsModule,
   ],
-  providers: [PrismaService],
+  controllers: [AppController],
+  providers: [PrismaService, AppService, CleanupService],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {

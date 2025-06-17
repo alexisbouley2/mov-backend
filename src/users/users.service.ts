@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
+import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     private prisma: PrismaService,
     private mediaService: MediaService,
+    private supabaseService: SupabaseService,
   ) {}
 
   async create(data: {
@@ -94,13 +96,13 @@ export class UsersService {
   }
 
   async remove(id: string) {
-    // Get user to clean up photos
+    // Get user data for cleanup
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: { photoStoragePath: true, photoThumbnailPath: true },
     });
 
-    // Delete photos if they exist
+    // Delete physical photo files
     if (user?.photoStoragePath && user?.photoThumbnailPath) {
       try {
         await this.mediaService.deletePhotoFiles(
@@ -108,10 +110,31 @@ export class UsersService {
           user.photoThumbnailPath,
         );
       } catch (error) {
-        console.error('Failed to delete user photos during removal:', error);
+        console.error('Failed to delete user photos:', error);
       }
     }
 
-    return this.prisma.user.delete({ where: { id } });
+    // Hard delete from Supabase Auth (frees up phone number)
+    try {
+      const { error: authError } = await this.supabaseService.deleteUser(id);
+      if (authError) {
+        console.error('Failed to delete from Supabase Auth:', authError);
+      }
+    } catch (error) {
+      console.error('Error deleting user from Supabase Auth:', error);
+    }
+
+    // Soft delete - anonymize user
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        phone: null, // Free up phone for reuse
+        username: 'Deleted User', // What others will see
+        photoStoragePath: null,
+        photoThumbnailPath: null,
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
+    });
   }
 }

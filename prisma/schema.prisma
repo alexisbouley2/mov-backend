@@ -11,10 +11,12 @@ datasource db {
 
 model User {
   id        String   @id @default(uuid())
-  phone     String   @unique
+  phone     String?   @unique
   username  String
   photoStoragePath     String?
   photoThumbnailPath   String?
+  isDeleted Boolean  @default(false)
+  deletedAt DateTime?
 
   videos    Video[]
   adminEvents Event[] @relation("AdminRelation")

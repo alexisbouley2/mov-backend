@@ -14,6 +14,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { CleanupService } from './tasks/cleanup.service';
 import { ChatModule } from './chat/chat.module';
 import { PhotosModule } from './photos/photos.module';
+import { SupabaseModule } from './supabase/supabase.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { PhotosModule } from './photos/photos.module';
     PhotosModule,
     ChatModule,
     EventParticipantsModule,
+    SupabaseModule,
   ],
   controllers: [AppController],
   providers: [PrismaService, AppService, CleanupService],

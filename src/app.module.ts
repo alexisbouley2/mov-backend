@@ -15,11 +15,17 @@ import { CleanupService } from './tasks/cleanup.service';
 import { ChatModule } from './chat/chat.module';
 import { PhotosModule } from './photos/photos.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import configuration from './config/configuration';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     PrismaModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [configuration],
+      envFilePath: ['.env.local', '.env', `.env.development`, '.env.staging'],
+    }),
     ConfigModule.forRoot({ isGlobal: true }),
     UsersModule,
     EventsModule,

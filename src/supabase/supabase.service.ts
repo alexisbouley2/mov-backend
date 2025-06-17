@@ -1,13 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { ConfigService } from '@nestjs/config';
+import type { EnvConfig } from '../config/validation.schema';
 
 @Injectable()
 export class SupabaseService {
   private supabase: SupabaseClient;
 
-  constructor() {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  constructor(private configService: ConfigService<EnvConfig>) {
+    const supabaseUrl = this.configService.get('SUPABASE_URL', { infer: true });
+    const supabaseServiceKey = this.configService.get(
+      'SUPABASE_SERVICE_ROLE_KEY',
+      { infer: true },
+    );
 
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing Supabase environment variables');

@@ -1,19 +1,26 @@
 import { Injectable } from '@nestjs/common';
 import {
+  S3Client,
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { s3Client, BUCKET_NAME } from '../config/s3.config';
+import { ConfigService } from '@nestjs/config';
+import { createS3Client, getBucketName } from '../config/s3.config';
+import type { EnvConfig } from '../config/validation.schema';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class MediaService {
-  // ===========================================
-  // CORE METHODS (Generic for any file type)
-  // ===========================================
+  private readonly s3Client: S3Client;
+  private readonly bucketName: string;
 
+  constructor(private configService: ConfigService<EnvConfig>) {
+    // Initialize S3 client and config values
+    this.s3Client = createS3Client(this.configService);
+    this.bucketName = getBucketName(this.configService);
+  }
   /**
    * Generate presigned URL for uploading any file type
    */
@@ -23,7 +30,7 @@ export class MediaService {
     metadata?: Record<string, string>,
   ): Promise<string> {
     const command = new PutObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: this.bucketName,
       Key: key,
       ContentType: contentType,
       Metadata: {
@@ -32,7 +39,7 @@ export class MediaService {
       },
     });
 
-    return getSignedUrl(s3Client, command, {
+    return getSignedUrl(this.s3Client, command, {
       expiresIn: 3600, // 1 hour
     });
   }
@@ -42,11 +49,11 @@ export class MediaService {
    */
   async getPresignedDownloadUrl(key: string): Promise<string> {
     const command = new GetObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: this.bucketName,
       Key: key,
     });
 
-    return getSignedUrl(s3Client, command, {
+    return getSignedUrl(this.s3Client, command, {
       expiresIn: 3600, // 1 hour
     });
   }
@@ -57,11 +64,11 @@ export class MediaService {
   async fileExists(key: string): Promise<boolean> {
     try {
       const command = new GetObjectCommand({
-        Bucket: BUCKET_NAME,
+        Bucket: this.bucketName,
         Key: key,
       });
 
-      await s3Client.send(command);
+      await this.s3Client.send(command);
       return true;
     } catch (error) {
       console.error('File existence check error:', error);
@@ -77,11 +84,11 @@ export class MediaService {
       console.log(`Deleting file from R2: ${key}`);
 
       const command = new DeleteObjectCommand({
-        Bucket: BUCKET_NAME,
+        Bucket: this.bucketName,
         Key: key,
       });
 
-      await s3Client.send(command);
+      await this.s3Client.send(command);
 
       console.log(`File deleted successfully: ${key}`);
     } catch (error) {

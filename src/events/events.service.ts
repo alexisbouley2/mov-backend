@@ -18,7 +18,17 @@ export class EventsService {
     photoStoragePath?: string;
     photoThumbnailPath?: string;
   }) {
-    return this.prisma.event.create({ data });
+    const event = await this.prisma.event.create({ data });
+
+    // Add admin as participant
+    await this.prisma.eventParticipant.create({
+      data: {
+        userId: data.adminId,
+        eventId: event.id,
+      },
+    });
+
+    return event;
   }
 
   async findAll() {
@@ -41,7 +51,6 @@ export class EventsService {
       }),
     );
   }
-
   async findOne(id: string) {
     const event = await this.prisma.event.findUnique({
       where: { id },
@@ -62,13 +71,41 @@ export class EventsService {
 
     if (!event) return null;
 
-    // Add photo URLs
+    // Add photo URLs for event
     const photoUrls = await this.mediaService.getEventPhotoUrls({
       photoStoragePath: event.photoStoragePath ?? undefined,
       photoThumbnailPath: event.photoThumbnailPath ?? undefined,
     });
 
-    return { ...event, ...photoUrls };
+    // Add photo URLs for admin
+    const adminPhotoUrls = await this.mediaService.getUserPhotoUrls({
+      photoThumbnailPath: event.admin.photoThumbnailPath ?? undefined,
+      photoStoragePath: event.admin.photoStoragePath ?? undefined,
+    });
+
+    // Add photo URLs for participants
+    const participantsWithPhotos = await Promise.all(
+      event.participants.map(async (participant) => {
+        const userPhotoUrls = await this.mediaService.getUserPhotoUrls({
+          photoThumbnailPath: participant.user.photoThumbnailPath ?? undefined,
+          photoStoragePath: participant.user.photoStoragePath ?? undefined,
+        });
+        return {
+          ...participant,
+          user: {
+            ...participant.user,
+            ...userPhotoUrls,
+          },
+        };
+      }),
+    );
+
+    return {
+      ...event,
+      ...photoUrls,
+      admin: { ...event.admin, ...adminPhotoUrls },
+      participants: participantsWithPhotos,
+    };
   }
 
   async update(

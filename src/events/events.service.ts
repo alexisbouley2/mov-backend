@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MediaService } from '../media/media.service';
 
 @Injectable()
 export class EventsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mediaService: MediaService,
+  ) {}
 
   async create(data: {
     name: string;
@@ -11,22 +15,35 @@ export class EventsService {
     date: Date;
     location?: string;
     adminId: string;
+    photoStoragePath?: string;
+    photoThumbnailPath?: string;
   }) {
     return this.prisma.event.create({ data });
   }
 
   async findAll() {
-    return this.prisma.event.findMany({
+    const events = await this.prisma.event.findMany({
       include: {
         admin: true,
         participants: { include: { user: true } },
         videos: true,
       },
     });
+
+    // Add photo URLs to each event
+    return Promise.all(
+      events.map(async (event) => {
+        const photoUrls = await this.mediaService.getEventPhotoUrls({
+          photoStoragePath: event.photoStoragePath ?? undefined,
+          photoThumbnailPath: event.photoThumbnailPath ?? undefined,
+        });
+        return { ...event, ...photoUrls };
+      }),
+    );
   }
 
   async findOne(id: string) {
-    return this.prisma.event.findUnique({
+    const event = await this.prisma.event.findUnique({
       where: { id },
       include: {
         admin: true,
@@ -42,6 +59,16 @@ export class EventsService {
         },
       },
     });
+
+    if (!event) return null;
+
+    // Add photo URLs
+    const photoUrls = await this.mediaService.getEventPhotoUrls({
+      photoStoragePath: event.photoStoragePath ?? undefined,
+      photoThumbnailPath: event.photoThumbnailPath ?? undefined,
+    });
+
+    return { ...event, ...photoUrls };
   }
 
   async update(
@@ -51,12 +78,65 @@ export class EventsService {
       information?: string;
       date?: Date;
       location?: string;
+      photoStoragePath?: string;
+      photoThumbnailPath?: string;
     },
   ) {
-    return this.prisma.event.update({ where: { id }, data });
+    // Get current event to check for existing photos
+    const currentEvent = await this.prisma.event.findUnique({
+      where: { id },
+      select: { photoStoragePath: true, photoThumbnailPath: true },
+    });
+
+    // Delete old photos if they exist and we're updating with new ones
+    if (
+      currentEvent?.photoStoragePath &&
+      currentEvent?.photoThumbnailPath &&
+      (data.photoStoragePath || data.photoThumbnailPath)
+    ) {
+      try {
+        await this.mediaService.deletePhotoFiles(
+          currentEvent.photoStoragePath,
+          currentEvent.photoThumbnailPath,
+        );
+      } catch (error) {
+        console.error('Failed to delete old event photos:', error);
+      }
+    }
+
+    const updatedEvent = await this.prisma.event.update({
+      where: { id },
+      data,
+    });
+
+    // Add photo URLs
+    const photoUrls = await this.mediaService.getEventPhotoUrls({
+      photoStoragePath: updatedEvent.photoStoragePath ?? undefined,
+      photoThumbnailPath: updatedEvent.photoThumbnailPath ?? undefined,
+    });
+
+    return { ...updatedEvent, ...photoUrls };
   }
 
   async remove(id: string) {
+    // Get event to clean up photos
+    const event = await this.prisma.event.findUnique({
+      where: { id },
+      select: { photoStoragePath: true, photoThumbnailPath: true },
+    });
+
+    // Delete photos if they exist
+    if (event?.photoStoragePath && event?.photoThumbnailPath) {
+      try {
+        await this.mediaService.deletePhotoFiles(
+          event.photoStoragePath,
+          event.photoThumbnailPath,
+        );
+      } catch (error) {
+        console.error('Failed to delete event photos during removal:', error);
+      }
+    }
+
     return this.prisma.event.delete({ where: { id } });
   }
 
@@ -79,21 +159,32 @@ export class EventsService {
       },
     });
 
+    // Add photo URLs to each event
+    const eventsWithPhotos = await Promise.all(
+      events.map(async (event) => {
+        const photoUrls = await this.mediaService.getEventPhotoUrls({
+          photoStoragePath: event.photoStoragePath ?? undefined,
+          photoThumbnailPath: event.photoThumbnailPath ?? undefined,
+        });
+        return { ...event, ...photoUrls };
+      }),
+    );
+
     // Categorize events based on date + 24h window
     const now = new Date();
 
     const categorized = {
-      past: events.filter((event) => {
+      past: eventsWithPhotos.filter((event) => {
         const eventDate = new Date(event.date);
         const eventEnd = new Date(eventDate.getTime() + 24 * 60 * 60 * 1000); // date + 24h
         return eventEnd < now; // date + 24h is already passed
       }),
-      current: events.filter((event) => {
+      current: eventsWithPhotos.filter((event) => {
         const eventDate = new Date(event.date);
         const eventEnd = new Date(eventDate.getTime() + 24 * 60 * 60 * 1000); // date + 24h
         return eventDate <= now && now < eventEnd; // date <= now < date + 24h
       }),
-      planned: events.filter((event) => {
+      planned: eventsWithPhotos.filter((event) => {
         const eventDate = new Date(event.date);
         return now < eventDate; // now < date
       }),

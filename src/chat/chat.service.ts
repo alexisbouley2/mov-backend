@@ -19,7 +19,7 @@ export interface ChatWithDetails {
     sender: {
       id: string;
       username: string;
-      photo: string | null;
+      photoThumbnailPath: string | null;
     };
   }>;
   event: {
@@ -52,7 +52,7 @@ export class ChatService {
               select: {
                 id: true,
                 username: true,
-                photo: true,
+                photoThumbnailPath: true,
               },
             },
           },
@@ -91,7 +91,7 @@ export class ChatService {
                 select: {
                   id: true,
                   username: true,
-                  photo: true,
+                  photoThumbnailPath: true,
                 },
               },
             },
@@ -151,7 +151,7 @@ export class ChatService {
             select: {
               id: true,
               username: true,
-              photo: true,
+              photoThumbnailPath: true,
             },
           },
         },
@@ -198,7 +198,7 @@ export class ChatService {
           select: {
             id: true,
             username: true,
-            photo: true,
+            photoThumbnailPath: true,
           },
         },
       },
@@ -231,7 +231,7 @@ export class ChatService {
                 select: {
                   id: true,
                   username: true,
-                  photo: true,
+                  photoThumbnailPath: true,
                 },
               },
             },

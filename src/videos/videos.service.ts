@@ -20,7 +20,7 @@ interface VideoWithUrls {
   user: {
     id: string;
     username: string;
-    photo: string | null;
+    photoThumbnailPath: string | null;
   };
 }
 
@@ -56,7 +56,7 @@ export class VideosService {
       },
       include: {
         user: {
-          select: { id: true, username: true, photo: true },
+          select: { id: true, username: true, photoThumbnailPath: true },
         },
       },
     });
@@ -114,7 +114,7 @@ export class VideosService {
         where: whereClause,
         include: {
           user: {
-            select: { id: true, username: true, photo: true },
+            select: { id: true, username: true, photoThumbnailPath: true },
           },
         },
         orderBy: {
@@ -173,7 +173,7 @@ export class VideosService {
       where: { storagePath },
       include: {
         user: {
-          select: { id: true, username: true, photo: true },
+          select: { id: true, username: true, photoThumbnailPath: true },
         },
         events: {
           include: {
@@ -192,7 +192,7 @@ export class VideosService {
       where: { id: videoId },
       include: {
         user: {
-          select: { id: true, username: true, photo: true },
+          select: { id: true, username: true, photoThumbnailPath: true },
         },
         events: {
           include: {
@@ -364,7 +364,7 @@ export class VideosService {
       data,
       include: {
         user: {
-          select: { id: true, username: true, photo: true },
+          select: { id: true, username: true, photoThumbnailPath: true },
         },
         events: {
           include: {

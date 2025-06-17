@@ -60,7 +60,11 @@ export class EventsVideosService {
           include: includeUserData
             ? {
                 user: {
-                  select: { id: true, username: true, photo: true },
+                  select: {
+                    id: true,
+                    username: true,
+                    photoThumbnailPath: true,
+                  },
                 },
               }
             : undefined,
@@ -114,7 +118,7 @@ export class EventsVideosService {
         video: {
           include: {
             user: {
-              select: { id: true, username: true, photo: true },
+              select: { id: true, username: true, photoThumbnailPath: true },
             },
           },
         },

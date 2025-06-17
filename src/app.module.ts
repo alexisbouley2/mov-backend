@@ -13,6 +13,7 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { CleanupService } from './tasks/cleanup.service';
 import { ChatModule } from './chat/chat.module';
+import { PhotosModule } from './photos/photos.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ChatModule } from './chat/chat.module';
     EventsModule,
     VideosModule,
     MediaModule,
+    PhotosModule,
     ChatModule,
     EventParticipantsModule,
   ],

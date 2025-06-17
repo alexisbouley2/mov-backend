@@ -22,7 +22,7 @@ interface VideoWithUrls {
   user: {
     id: string;
     username: string;
-    photo: string | null;
+    photoThumbnailPath: string | null;
   };
 }
 

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { MediaService } from '../media/media.service';
-import { SupabaseService } from '../supabase/supabase.service';
+import { PrismaService } from '@/prisma/prisma.service';
+import { MediaService } from '@/media/media.service';
+import { SupabaseService } from '@/supabase/supabase.service';
 
 @Injectable()
 export class UsersService {

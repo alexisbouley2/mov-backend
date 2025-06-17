@@ -1,5 +1,5 @@
 import { Controller, Post, Body } from '@nestjs/common';
-import { MediaService } from '../media/media.service';
+import { MediaService } from '@/media/media.service';
 
 interface UploadUrlResponse {
   uploadUrl: string;

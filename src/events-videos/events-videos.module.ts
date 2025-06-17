@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { EventsVideosService } from './events-videos.service';
-import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from '@/prisma/prisma.module';
 
 @Module({
   imports: [PrismaModule],

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { MediaService } from '../media/media.service';
+import { PrismaService } from '@/prisma/prisma.service';
+import { MediaService } from '@/media/media.service';
 
 @Injectable()
 export class EventsService {

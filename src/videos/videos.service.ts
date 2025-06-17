@@ -1,8 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { MediaService } from '../media/media.service';
-import { EventsVideosService } from '../events-videos/events-videos.service';
-import { Video } from '../../generated/prisma';
+import { PrismaService } from '@/prisma/prisma.service';
+import { MediaService } from '@/media/media.service';
+import { EventsVideosService } from '@/events-videos/events-videos.service';
+
+interface Video {
+  id: string;
+  storagePath: string;
+  thumbnailPath: string;
+}
 
 interface VideoFeedOptions {
   cursor?: string;
@@ -272,6 +277,7 @@ export class VideosService {
   /**
    * Delete video and its files from storage (including thumbnail)
    */
+
   private async deleteVideoAndFiles(video: Video & { thumbnailPath: string }) {
     try {
       // Delete both video and thumbnail from R2

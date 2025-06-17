@@ -9,7 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { VideosService } from './videos.service';
-import { MediaService } from '../media/media.service';
+import { MediaService } from '@/media/media.service';
 
 // Add interface at the top of the file after imports
 interface VideoWithUrls {

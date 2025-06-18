@@ -29,10 +29,3 @@ export const getBucketName = (
     infer: true,
   })!;
 };
-
-//never used
-export const getPublicUrl = (
-  configService: ConfigService<EnvConfig>,
-): string => {
-  return configService.get('CLOUDFLARE_R2_PUBLIC_URL', { infer: true })!;
-};

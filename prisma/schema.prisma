@@ -1,4 +1,3 @@
-// Simplified Prisma schema - Direct Event to Messages relationship
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -22,7 +21,6 @@ model User {
   adminEvents Event[] @relation("AdminRelation")
   eventParticipants EventParticipant[]
   
-  // Direct message relation
   sentMessages Message[] @relation("MessageSender")
 }
 
@@ -35,10 +33,8 @@ model Video {
   userId        String
   status        String   @default("pending") // "pending" | "published"
   
-  // Many-to-many relationship with events
   events        VideoEvent[]
 
-  // Indexes for feed performance
   @@index([userId, createdAt])
   @@index([status, createdAt])
 }
@@ -56,13 +52,10 @@ model Event {
   admin       User     @relation("AdminRelation", fields: [adminId], references: [id])
   adminId     String
 
-  participants EventParticipant[]
-  
-  // Many-to-many relationship with videos
-  videos      VideoEvent[]
-  
-  // Direct relationship with messages (no intermediate Chat model)
   messages    Message[]
+  
+  participants EventParticipant[]
+  videos      VideoEvent[]
 }
 
 model VideoEvent {
@@ -76,7 +69,7 @@ model VideoEvent {
   @@unique([videoId, eventId])
   @@index([videoId])
   @@index([eventId])
-  @@index([eventId, addedAt]) // For feed queries
+  @@index([eventId, addedAt])
 }
 
 model EventParticipant {
@@ -95,16 +88,13 @@ model Message {
   content   String
   createdAt DateTime @default(now())
   
-  // Direct relationship with event (no Chat model)
   eventId   String
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   
   senderId  String
   sender    User     @relation("MessageSender", fields: [senderId], references: [id])
   
-  // Message type (text, image, etc.) - extensible for future features
   type      String   @default("text") // "text", "image", "video"
-  
   
   @@index([eventId, createdAt])
   @@index([senderId])

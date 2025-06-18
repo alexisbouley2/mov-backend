@@ -1,4 +1,4 @@
-// src/message/message.service.ts
+// src/message/messages.service.ts
 import {
   Injectable,
   NotFoundException,

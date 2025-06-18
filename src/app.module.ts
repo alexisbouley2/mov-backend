@@ -1,9 +1,8 @@
 import { ConfigModule } from '@nestjs/config';
 import { PrismaService } from './prisma/prisma.service';
 import { UsersModule } from './users/users.module';
-import { EventsModule } from './events/events.module';
+import { EventModule } from './event/event.module';
 import { VideosModule } from './videos/videos.module';
-import { EventParticipantsModule } from './event-participants/event-participants.module';
 import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { LoggerMiddleware } from './middleware/logger.middleware';
 import { MediaModule } from './media/media.module';
@@ -28,12 +27,11 @@ import configuration from './config/configuration';
     }),
     ConfigModule.forRoot({ isGlobal: true }),
     UsersModule,
-    EventsModule,
+    EventModule,
     VideosModule,
     MediaModule,
     PhotosModule,
     MessageModule,
-    EventParticipantsModule,
     SupabaseModule,
   ],
   controllers: [AppController],

@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-// Define the schema
 export const validationSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'production', 'staging'])
@@ -16,7 +15,7 @@ export const validationSchema = z.object({
 
   SUPABASE_URL: z.string().url().includes('supabase.co'),
 
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).startsWith('eyJ'), // JWT tokens start with eyJ
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).startsWith('eyJ'),
 
   CLOUDFLARE_R2_ENDPOINT: z.string().url().includes('r2.cloudflarestorage.com'),
 
@@ -32,10 +31,8 @@ export const validationSchema = z.object({
   CLOUDFLARE_R2_PUBLIC_URL: z.string().url(),
 });
 
-// Export the inferred type
 export type EnvConfig = z.infer<typeof validationSchema>;
 
-// Validation function
 export const validateEnv = (
   env: Record<string, string | undefined>,
 ): EnvConfig => {

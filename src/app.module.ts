@@ -12,7 +12,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { CleanupService } from './tasks/cleanup.service';
-import { ChatModule } from './chat/chat.module';
+import { MessageModule } from './message/message.module';
 import { PhotosModule } from './photos/photos.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import configuration from './config/configuration';
@@ -32,7 +32,7 @@ import configuration from './config/configuration';
     VideosModule,
     MediaModule,
     PhotosModule,
-    ChatModule,
+    MessageModule,
     EventParticipantsModule,
     SupabaseModule,
   ],

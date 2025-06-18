@@ -1,4 +1,4 @@
-// Fixed Prisma schema - simple approach
+// Simplified Prisma schema - Direct Event to Messages relationship
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -22,14 +22,14 @@ model User {
   adminEvents Event[] @relation("AdminRelation")
   eventParticipants EventParticipant[]
   
-  // Chat relations
+  // Direct message relation
   sentMessages Message[] @relation("MessageSender")
 }
 
 model Video {
   id            String   @id @default(uuid())
   storagePath   String  @unique
-  thumbnailPath String   // Now required
+  thumbnailPath String 
   createdAt     DateTime @default(now())
   user          User     @relation(fields: [userId], references: [id])
   userId        String
@@ -61,8 +61,8 @@ model Event {
   // Many-to-many relationship with videos
   videos      VideoEvent[]
   
-  // Optional chat - created lazily when first user opens chat
-  chat        Chat?    @relation("EventChat")
+  // Direct relationship with messages (no intermediate Chat model)
+  messages    Message[]
 }
 
 model VideoEvent {
@@ -90,29 +90,14 @@ model EventParticipant {
   @@unique([userId, eventId], name: "userId_eventId")
 }
 
-// Chat belongs to an event - created lazily
-model Chat {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  // Each chat belongs to exactly one event
-  event     Event    @relation("EventChat", fields: [eventId], references: [id], onDelete: Cascade)
-  eventId   String   @unique
-  
-  messages  Message[]
-  
-  @@index([eventId])
-  @@index([createdAt])
-}
-
 model Message {
   id        String   @id @default(uuid())
   content   String
   createdAt DateTime @default(now())
   
-  chatId    String
-  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  // Direct relationship with event (no Chat model)
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   
   senderId  String
   sender    User     @relation("MessageSender", fields: [senderId], references: [id])
@@ -120,23 +105,8 @@ model Message {
   // Message type (text, image, etc.) - extensible for future features
   type      String   @default("text") // "text", "image", "video"
   
-  // For read receipts (optional)
-  readBy    MessageRead[]
   
-  @@index([chatId, createdAt])
+  @@index([eventId, createdAt])
   @@index([senderId])
 }
 
-// Optional: For read receipts functionality
-model MessageRead {
-  id        String   @id @default(uuid())
-  messageId String
-  userId    String
-  readAt    DateTime @default(now())
-  
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  
-  @@unique([messageId, userId])
-  @@index([messageId])
-  @@index([userId])
-}

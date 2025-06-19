@@ -30,9 +30,4 @@ export class SupabaseService {
     const { error } = await this.supabase.auth.admin.deleteUser(userId);
     return { error };
   }
-
-  // Add other Supabase operations as needed
-  getClient(): SupabaseClient {
-    return this.supabase;
-  }
 }

@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { PhotosController } from './photos.controller';
+import { PhotoController } from './photo.controller';
 import { MediaModule } from '@/media/media.module';
 
 @Module({
   imports: [MediaModule],
-  controllers: [PhotosController],
+  controllers: [PhotoController],
 })
-export class PhotosModule {}
+export class PhotoModule {}

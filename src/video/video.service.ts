@@ -1,23 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MediaService } from '@/media/media.service';
-import { EventsVideosService } from '@/events-videos/events-videos.service';
 
 interface Video {
   id: string;
-  storagePath: string;
+  videoPath: string;
   thumbnailPath: string;
 }
 
 interface VideoFeedOptions {
   cursor?: string;
   limit: number;
-  userId?: string; // Filter by specific user
+  userId?: string; // Filter by specific user ID
 }
 
 interface VideoWithUrls {
   id: string;
-  storagePath: string;
+  videoPath: string;
   thumbnailPath: string;
   videoUrl: string;
   thumbnailUrl: string;
@@ -25,7 +24,7 @@ interface VideoWithUrls {
   user: {
     id: string;
     username: string;
-    photoThumbnailPath: string | null;
+    profileThumbnailPath: string | null;
   };
 }
 
@@ -36,24 +35,18 @@ interface VideoFeedResult {
 }
 
 @Injectable()
-export class VideosService {
+export class VideoService {
   constructor(
     private prisma: PrismaService,
     private mediaService: MediaService,
-    private eventsVideosService: EventsVideosService,
   ) {}
 
-  /**
-   * Create a new video record with thumbnail
-   */
   async create(data: {
-    storagePath: string;
+    videoPath: string;
     thumbnailPath: string;
     userId: string;
     status?: string;
   }) {
-    console.log('Creating video record:', data);
-
     return this.prisma.video.create({
       data: {
         ...data,
@@ -61,22 +54,17 @@ export class VideosService {
       },
       include: {
         user: {
-          select: { id: true, username: true, photoThumbnailPath: true },
+          select: { id: true, username: true, profileThumbnailPath: true },
         },
       },
     });
   }
 
-  /**
-   * Get paginated video feed for an event
-   */
   async getEventVideoFeed(
     eventId: string,
     options: VideoFeedOptions,
   ): Promise<VideoFeedResult> {
     const { cursor, limit, userId } = options;
-
-    console.log(`Fetching video feed for event ${eventId}`, options);
 
     // Build where clause with proper typing
     interface WhereClause {
@@ -101,29 +89,26 @@ export class VideosService {
       },
     };
 
-    // Add user filter if specified
     if (userId) {
       whereClause.userId = userId;
     }
 
-    // Add cursor condition for pagination
     if (cursor) {
       whereClause.id = {
-        lt: cursor, // Get videos older than cursor
+        lt: cursor,
       };
     }
 
     try {
-      // Fetch videos with pagination
       const videos = await this.prisma.video.findMany({
         where: whereClause,
         include: {
           user: {
-            select: { id: true, username: true, photoThumbnailPath: true },
+            select: { id: true, username: true, profileThumbnailPath: true },
           },
         },
         orderBy: {
-          createdAt: 'desc', // Most recent first
+          createdAt: 'desc',
         },
         take: limit + 1, // Fetch one extra to check if there are more
       });
@@ -135,15 +120,16 @@ export class VideosService {
       // Generate signed URLs for all videos
       const videosWithUrls: VideoWithUrls[] = await Promise.all(
         videosToReturn.map(async (video) => {
-          const { videoUrl, thumbnailUrl } =
-            await this.mediaService.getVideoUrls(
-              video.storagePath,
-              video.thumbnailPath,
-            );
+          const videoUrl = await this.mediaService.getPresignedDownloadUrl(
+            video.videoPath,
+          );
+          const thumbnailUrl = await this.mediaService.getPresignedDownloadUrl(
+            video.thumbnailPath,
+          );
 
           return {
             id: video.id,
-            storagePath: video.storagePath,
+            videoPath: video.videoPath,
             thumbnailPath: video.thumbnailPath,
             videoUrl,
             thumbnailUrl,
@@ -173,12 +159,12 @@ export class VideosService {
   /**
    * Find video by storage path
    */
-  async findByStoragePath(storagePath: string) {
+  async findByStoragePath(videoPath: string) {
     return this.prisma.video.findUnique({
-      where: { storagePath },
+      where: { videoPath },
       include: {
         user: {
-          select: { id: true, username: true, photoThumbnailPath: true },
+          select: { id: true, username: true, profileThumbnailPath: true },
         },
         events: {
           include: {
@@ -189,15 +175,12 @@ export class VideosService {
     });
   }
 
-  /**
-   * Find video by ID
-   */
   async findById(videoId: string) {
     return this.prisma.video.findUnique({
       where: { id: videoId },
       include: {
         user: {
-          select: { id: true, username: true, photoThumbnailPath: true },
+          select: { id: true, username: true, profileThumbnailPath: true },
         },
         events: {
           include: {
@@ -208,13 +191,7 @@ export class VideosService {
     });
   }
 
-  /**
-   * Associate video with events and mark as published
-   */
   async associateWithEvents(videoId: string, eventIds: string[]) {
-    console.log(`Associating video ${videoId} with events:`, eventIds);
-
-    // Use transaction to ensure atomicity
     return this.prisma.$transaction(async (tx) => {
       // Update video status to published
       await tx.video.update({
@@ -222,48 +199,18 @@ export class VideosService {
         data: { status: 'published' },
       });
 
-      // Use the events-videos service to create associations
-      await this.eventsVideosService.associateVideoWithEvents(
-        videoId,
-        eventIds,
-      );
+      await this.prisma.videoEvent.createMany({
+        data: eventIds.map((eventId) => ({
+          videoId,
+          eventId,
+        })),
+        skipDuplicates: true,
+      });
 
-      // Return the updated video with all relations
       return this.findById(videoId);
     });
   }
 
-  /**
-   * Remove video from specific events
-   */
-  async removeFromEvents(videoId: string, eventIds: string[]) {
-    console.log(`Removing video ${videoId} from events:`, eventIds);
-
-    // Remove associations
-    await this.eventsVideosService.removeVideoFromEvents(videoId, eventIds);
-
-    // Check remaining associations
-    const remainingCount =
-      await this.eventsVideosService.countVideoEvents(videoId);
-
-    // If no events remain, delete the video entirely
-    if (remainingCount === 0) {
-      const video = await this.findById(videoId);
-
-      if (video) {
-        await this.deleteVideoAndFiles(video);
-        return { deleted: true, video };
-      }
-    }
-
-    // Return updated video
-    const updatedVideo = await this.findById(videoId);
-    return { deleted: false, video: updatedVideo };
-  }
-
-  /**
-   * Delete a video entirely (from all events and storage)
-   */
   async delete(videoId: string) {
     const video = await this.findById(videoId);
 
@@ -274,17 +221,13 @@ export class VideosService {
     return this.deleteVideoAndFiles(video);
   }
 
-  /**
-   * Delete video and its files from storage (including thumbnail)
-   */
-
   private async deleteVideoAndFiles(video: Video & { thumbnailPath: string }) {
     try {
       // Delete both video and thumbnail from R2
-      await this.mediaService.deleteVideoFiles(
-        video.storagePath,
+      await this.mediaService.deleteMultipleFiles([
+        video.videoPath,
         video.thumbnailPath,
-      );
+      ]);
 
       // Delete from database (cascading will remove VideoEvent relations)
       return this.prisma.video.delete({
@@ -331,53 +274,5 @@ export class VideosService {
     }
 
     return deletedCount;
-  }
-
-  /**
-   * Get videos by user
-   */
-  async getUserVideos(userId: string) {
-    return this.prisma.video.findMany({
-      where: {
-        userId,
-        status: 'published',
-      },
-      include: {
-        events: {
-          include: {
-            event: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-  }
-
-  /**
-   * Update video metadata
-   */
-  async updateVideo(
-    videoId: string,
-    data: {
-      thumbnailPath?: string;
-      status?: string;
-    },
-  ) {
-    return this.prisma.video.update({
-      where: { id: videoId },
-      data,
-      include: {
-        user: {
-          select: { id: true, username: true, photoThumbnailPath: true },
-        },
-        events: {
-          include: {
-            event: true,
-          },
-        },
-      },
-    });
   }
 }

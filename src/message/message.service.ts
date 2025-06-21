@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { Logger } from '@nestjs/common';
 
 export interface MessageDetails {
   id: string;
@@ -31,6 +32,8 @@ export interface EventMessagesResponse {
 
 @Injectable()
 export class MessageService {
+  private readonly logger = new Logger(MessageService.name);
+
   constructor(private prisma: PrismaService) {}
 
   // Get messages for an event with pagination
@@ -145,7 +148,7 @@ export class MessageService {
       };
     } catch (error) {
       // If user doesn't have access, return default
-      console.error(error);
+      this.logger.error(error);
       return {
         hasMessages: false,
         messageCount: 0,

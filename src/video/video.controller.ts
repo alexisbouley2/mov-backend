@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { VideoService } from './video.service';
 import { MediaService } from '@/media/media.service';
+import { Logger } from '@nestjs/common';
 
 interface VideoWithUrls {
   id: string;
@@ -49,6 +50,8 @@ interface DeleteVideoDto {
 
 @Controller('videos')
 export class VideoController {
+  private readonly logger = new Logger(VideoController.name);
+
   constructor(
     private readonly videoService: VideoService,
     private readonly mediaService: MediaService,
@@ -73,7 +76,7 @@ export class VideoController {
         ...result,
       };
     } catch (error) {
-      console.error('Error generating video upload URL:', error);
+      this.logger.error('Error generating video upload URL:', error);
       throw new BadRequestException('Failed to generate video upload URL');
     }
   }
@@ -121,7 +124,7 @@ export class VideoController {
         message: 'Video upload confirmed successfully',
       };
     } catch (error) {
-      console.error('Error confirming upload:', error);
+      this.logger.error('Error confirming upload:', error);
 
       if (error instanceof BadRequestException) {
         throw error;
@@ -160,7 +163,7 @@ export class VideoController {
         ...result,
       };
     } catch (error) {
-      console.error('Error fetching video feed:', error);
+      this.logger.error('Error fetching video feed:', error);
       throw new BadRequestException('Failed to fetch video feed');
     }
   }
@@ -199,7 +202,7 @@ export class VideoController {
         message: 'Video associated with events successfully',
       };
     } catch (error) {
-      console.error('Error associating events:', error);
+      this.logger.error('Error associating events:', error);
 
       if (error instanceof BadRequestException) {
         throw error;
@@ -243,7 +246,7 @@ export class VideoController {
         message: 'Video deleted successfully',
       };
     } catch (error) {
-      console.error('Error deleting video:', error);
+      this.logger.error('Error deleting video:', error);
 
       if (error instanceof BadRequestException) {
         throw error;

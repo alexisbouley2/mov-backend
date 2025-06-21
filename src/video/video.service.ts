@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MediaService } from '@/media/media.service';
+import { Logger } from '@nestjs/common';
 
 interface Video {
   id: string;
@@ -36,6 +37,8 @@ interface VideoFeedResult {
 
 @Injectable()
 export class VideoService {
+  private readonly logger = new Logger(VideoService.name);
+
   constructor(
     private prisma: PrismaService,
     private mediaService: MediaService,
@@ -151,7 +154,7 @@ export class VideoService {
         hasMore,
       };
     } catch (error) {
-      console.error('Error fetching video feed:', error);
+      this.logger.error('Error fetching video feed:', error);
       throw error;
     }
   }
@@ -234,7 +237,7 @@ export class VideoService {
         where: { id: video.id },
       });
     } catch (error) {
-      console.error('Error deleting video and files:', error);
+      this.logger.error('Error deleting video and files:', error);
       throw error;
     }
   }
@@ -258,7 +261,9 @@ export class VideoService {
       },
     });
 
-    console.log(`Found ${orphanedVideos.length} orphaned videos to clean up`);
+    this.logger.log(
+      `Found ${orphanedVideos.length} orphaned videos to clean up`,
+    );
 
     // Delete each orphaned video
     let deletedCount = 0;
@@ -269,7 +274,10 @@ export class VideoService {
         );
         deletedCount++;
       } catch (error) {
-        console.error(`Failed to delete orphaned video ${video.id}:`, error);
+        this.logger.error(
+          `Failed to delete orphaned video ${video.id}:`,
+          error,
+        );
       }
     }
 

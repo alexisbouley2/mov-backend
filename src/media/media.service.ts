@@ -10,11 +10,13 @@ import { ConfigService } from '@nestjs/config';
 import { createS3Client, getBucketName } from '@/config/s3.config';
 import type { EnvConfig } from '@/config/validation.schema';
 import { v4 as uuidv4 } from 'uuid';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class MediaService {
   private readonly s3Client: S3Client;
   private readonly bucketName: string;
+  private readonly logger = new Logger(MediaService.name);
 
   constructor(private configService: ConfigService<EnvConfig>) {
     this.s3Client = createS3Client(this.configService);
@@ -62,7 +64,7 @@ export class MediaService {
       await this.s3Client.send(command);
       return true;
     } catch (error) {
-      console.error('File existence check error:', error);
+      this.logger.error('File existence check error:', error);
       return false;
     }
   }
@@ -76,7 +78,7 @@ export class MediaService {
 
       await this.s3Client.send(command);
     } catch (error) {
-      console.error(`Error deleting file ${key}:`, error);
+      this.logger.error(`Error deleting file ${key}:`, error);
       throw error;
     }
   }
@@ -85,7 +87,7 @@ export class MediaService {
     try {
       await Promise.all(keys.map((key) => this.deleteFromR2(key)));
     } catch (error) {
-      console.error('Error deleting multiple files:', error);
+      this.logger.error('Error deleting multiple files:', error);
       throw error;
     }
   }

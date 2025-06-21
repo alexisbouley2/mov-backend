@@ -2,9 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MediaService } from '@/media/media.service';
 import { SupabaseService } from '@/supabase/supabase.service';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
+
   constructor(
     private prisma: PrismaService,
     private mediaService: MediaService,
@@ -50,7 +53,7 @@ export class UserService {
           currentUser.profileThumbnailPath,
         ]);
       } catch (error) {
-        console.error('Failed to delete old user photos:', error);
+        this.logger.error('Failed to delete old user photos:', error);
       }
     }
 
@@ -88,7 +91,7 @@ export class UserService {
           user.profileThumbnailPath,
         ]);
       } catch (error) {
-        console.error('Failed to delete user photos:', error);
+        this.logger.error('Failed to delete user photos:', error);
       }
     }
 
@@ -96,10 +99,10 @@ export class UserService {
     try {
       const { error: authError } = await this.supabaseService.deleteUser(id);
       if (authError) {
-        console.error('Failed to delete from Supabase Auth:', authError);
+        this.logger.error('Failed to delete from Supabase Auth:', authError);
       }
     } catch (error) {
-      console.error('Error deleting user from Supabase Auth:', error);
+      this.logger.error('Error deleting user from Supabase Auth:', error);
     }
 
     // Soft delete - anonymize user

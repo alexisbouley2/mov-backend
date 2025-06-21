@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MediaService } from '@/media/media.service';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class EventService {
+  private readonly logger = new Logger(EventService.name);
+
   constructor(
     private prisma: PrismaService,
     private mediaService: MediaService,
@@ -125,7 +128,7 @@ export class EventService {
           currentEvent.coverThumbnailPath,
         ]);
       } catch (error) {
-        console.error('Failed to delete old event photos:', error);
+        this.logger.error('Failed to delete old event photos:', error);
       }
     }
 

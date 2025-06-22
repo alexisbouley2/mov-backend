@@ -12,7 +12,6 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { CleanupService } from './tasks/cleanup.service';
 import { MessageModule } from './message/message.module';
-import { PhotoModule } from './photo/photo.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import configuration from './config/configuration';
 
@@ -30,7 +29,6 @@ import configuration from './config/configuration';
     EventModule,
     VideoModule,
     MediaModule,
-    PhotoModule,
     MessageModule,
     SupabaseModule,
   ],

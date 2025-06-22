@@ -31,12 +31,6 @@ interface VideoFeedResult {
   hasMore: boolean;
 }
 
-interface ConfirmUploadDto {
-  videoFileName: string;
-  thumbnailFileName: string;
-  userId: string;
-}
-
 interface AssociateEventsDto {
   fileName: string;
   userId: string;
@@ -56,83 +50,6 @@ export class VideoController {
     private readonly videoService: VideoService,
     private readonly mediaService: MediaService,
   ) {}
-
-  @Get('upload-url')
-  async getUploadUrl(
-    @Query('userId') userId: string,
-    @Query('size') size: 'thumbnail' | 'full',
-  ) {
-    if (!userId) {
-      throw new BadRequestException('userId is required');
-    }
-    try {
-      const result = await this.mediaService.generateUploadUrl(
-        userId,
-        size,
-        'video',
-      );
-      return {
-        success: true,
-        ...result,
-      };
-    } catch (error) {
-      this.logger.error('Error generating video upload URL:', error);
-      throw new BadRequestException('Failed to generate video upload URL');
-    }
-  }
-
-  /**
-   * POST /videos/confirm-upload
-   * Confirm upload and save to database with thumbnail
-   */
-  @Post('confirm-upload')
-  async confirmUpload(@Body() body: ConfirmUploadDto) {
-    if (!body.videoFileName || !body.thumbnailFileName || !body.userId) {
-      throw new BadRequestException(
-        'fileName, thumbnailFileName and userId are required',
-      );
-    }
-
-    try {
-      // Check if both files exist on R2
-      const [videoExists, thumbnailExists] = await Promise.all([
-        this.mediaService.fileExists(body.videoFileName),
-        this.mediaService.fileExists(body.thumbnailFileName),
-      ]);
-
-      if (!videoExists) {
-        throw new BadRequestException('Video file not found on cloud storage');
-      }
-
-      if (!thumbnailExists) {
-        throw new BadRequestException(
-          'Thumbnail file not found on cloud storage',
-        );
-      }
-
-      // Save to database with status "pending"
-      const video = await this.videoService.create({
-        videoPath: body.videoFileName,
-        thumbnailPath: body.thumbnailFileName,
-        userId: body.userId,
-        status: 'pending',
-      });
-
-      return {
-        success: true,
-        video,
-        message: 'Video upload confirmed successfully',
-      };
-    } catch (error) {
-      this.logger.error('Error confirming upload:', error);
-
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      throw new BadRequestException('Failed to confirm upload');
-    }
-  }
 
   /**
    * GET /videos/feed/:eventId

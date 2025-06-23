@@ -39,7 +39,11 @@ export class EventService {
       where: { id },
       include: {
         admin: true,
-        participants: { include: { user: true } },
+        participants: {
+          include: { user: true },
+          take: 6,
+          orderBy: { joinedAt: 'desc' },
+        },
         videos: {
           include: {
             video: {
@@ -196,5 +200,85 @@ export class EventService {
     };
 
     return categorized;
+  }
+
+  async getEventParticipants(
+    eventId: string,
+    userId: string,
+    page: number = 1,
+    limit: number = 20,
+  ) {
+    // Verify user has access to event
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        participants: {
+          where: { userId },
+          select: { userId: true },
+        },
+      },
+    });
+
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    const hasAccess = event.participants.length > 0;
+    if (!hasAccess) {
+      throw new Error('You do not have access to this event');
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [participants, total] = await Promise.all([
+      this.prisma.eventParticipant.findMany({
+        where: { eventId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              profileThumbnailPath: true,
+            },
+          },
+        },
+        orderBy: { joinedAt: 'desc' },
+        take: limit,
+        skip,
+      }),
+      this.prisma.eventParticipant.count({
+        where: { eventId },
+      }),
+    ]);
+
+    // Add photo thumbnail URLs for participants
+    const participantsWithThumbnails = await Promise.all(
+      participants.map(async (participant) => {
+        let profileThumbnailUrl: string | null = null;
+        if (participant.user.profileThumbnailPath) {
+          profileThumbnailUrl = await this.mediaService.getPresignedDownloadUrl(
+            participant.user.profileThumbnailPath,
+          );
+        }
+        return {
+          ...participant,
+          user: {
+            ...participant.user,
+            profileThumbnailUrl,
+          },
+        };
+      }),
+    );
+
+    return {
+      participants: participantsWithThumbnails,
+      hasMore: participants.length === limit,
+      page,
+      total,
+      event: {
+        id: event.id,
+        name: event.name,
+      },
+    };
   }
 }

@@ -7,7 +7,7 @@ export class MessageController {
   constructor(private readonly messageService: MessageService) {}
 
   // Get message preview for event detail page
-  @Get('event/:eventId/preview/user/:userId')
+  @Get('preview/event/:eventId/user/:userId')
   getMessagePreview(
     @Param('eventId') eventId: string,
     @Param('userId') userId: string,

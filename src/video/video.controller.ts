@@ -42,6 +42,12 @@ interface DeleteVideoDto {
   userId: string;
 }
 
+interface ConfirmUploadDto {
+  videoPath: string;
+  thumbnailPath: string;
+  userId: string;
+}
+
 @Controller('videos')
 export class VideoController {
   private readonly logger = new Logger(VideoController.name);
@@ -86,6 +92,59 @@ export class VideoController {
   }
 
   /**
+   * POST /videos/confirm-upload
+   * Confirm upload and save to database with thumbnail
+   */
+  @Post('confirm-upload')
+  async confirmUpload(@Body() body: ConfirmUploadDto) {
+    if (!body.videoPath || !body.thumbnailPath || !body.userId) {
+      throw new BadRequestException(
+        'videoPath, thumbnailPath and userId are required',
+      );
+    }
+
+    try {
+      // Check if both files exist on R2
+      const [videoExists, thumbnailExists] = await Promise.all([
+        this.mediaService.fileExists(body.videoPath),
+        this.mediaService.fileExists(body.thumbnailPath),
+      ]);
+
+      if (!videoExists) {
+        throw new BadRequestException('Video file not found on cloud storage');
+      }
+
+      if (!thumbnailExists) {
+        throw new BadRequestException(
+          'Thumbnail file not found on cloud storage',
+        );
+      }
+
+      // Save to database with status "pending"
+      const video = await this.videoService.create({
+        videoPath: body.videoPath,
+        thumbnailPath: body.thumbnailPath,
+        userId: body.userId,
+        status: 'pending',
+      });
+
+      return {
+        success: true,
+        video,
+        message: 'Video upload confirmed successfully',
+      };
+    } catch (error) {
+      this.logger.error('Error confirming upload:', error);
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException('Failed to confirm upload');
+    }
+  }
+
+  /**
    * POST /videos/associate-events
    * Associate video with events and mark as published
    */
@@ -98,6 +157,7 @@ export class VideoController {
     }
 
     try {
+      this.logger.debug('Associating events:', body);
       const video = await this.videoService.findByStoragePath(body.fileName);
 
       if (!video) {

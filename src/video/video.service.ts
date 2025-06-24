@@ -26,6 +26,7 @@ interface VideoWithUrls {
     id: string;
     username: string;
     profileThumbnailPath: string | null;
+    profileThumbnailUrl: string | null;
   };
 }
 
@@ -130,6 +131,15 @@ export class VideoService {
             video.thumbnailPath,
           );
 
+          // Generate presigned URL for user profile thumbnail
+          let userProfileThumbnailUrl: string | null = null;
+          if (video.user.profileThumbnailPath) {
+            userProfileThumbnailUrl =
+              await this.mediaService.getPresignedDownloadUrl(
+                video.user.profileThumbnailPath,
+              );
+          }
+
           return {
             id: video.id,
             videoPath: video.videoPath,
@@ -137,7 +147,10 @@ export class VideoService {
             videoUrl,
             thumbnailUrl,
             createdAt: video.createdAt,
-            user: video.user,
+            user: {
+              ...video.user,
+              profileThumbnailUrl: userProfileThumbnailUrl,
+            },
           };
         }),
       );

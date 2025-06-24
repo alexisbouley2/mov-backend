@@ -163,7 +163,7 @@ export class EventService {
       },
     });
 
-    // Add photo thumbnail URLs to each event
+    // Add photo thumbnail URLs to each event and participant thumbnails
     const eventsWithPhotos = await Promise.all(
       events.map(async (event) => {
         let coverThumbnailUrl: string | null = null;
@@ -172,9 +172,31 @@ export class EventService {
             event.coverThumbnailPath,
           );
         }
+
+        // Add photo thumbnail URLs for participants
+        const participantsWithProfileThumbnailUrls = await Promise.all(
+          event.participants.map(async (participant) => {
+            let userProfileThumbnailUrl: string | null = null;
+            if (participant.user.profileThumbnailPath) {
+              userProfileThumbnailUrl =
+                await this.mediaService.getPresignedDownloadUrl(
+                  participant.user.profileThumbnailPath,
+                );
+            }
+            return {
+              ...participant,
+              user: {
+                ...participant.user,
+                profileThumbnailUrl: userProfileThumbnailUrl,
+              },
+            };
+          }),
+        );
+
         return {
           ...event,
           coverThumbnailUrl,
+          participants: participantsWithProfileThumbnailUrls,
         };
       }),
     );

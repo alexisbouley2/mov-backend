@@ -66,6 +66,13 @@ export class EventService {
       );
     }
 
+    let coverThumbnailUrl: string | null = null;
+    if (event.coverThumbnailPath) {
+      coverThumbnailUrl = await this.mediaService.getPresignedDownloadUrl(
+        event.coverThumbnailPath,
+      );
+    }
+
     // Add photo URLs for admin
     let adminProfileThumbnailUrl: string | null = null;
     if (event.admin.profileThumbnailPath) {
@@ -98,6 +105,7 @@ export class EventService {
     return {
       ...event,
       coverImageUrl,
+      coverThumbnailUrl,
       admin: { ...event.admin, profileThumbnailUrl: adminProfileThumbnailUrl },
       participants: participantsWithProfileThumbnailUrls,
     };

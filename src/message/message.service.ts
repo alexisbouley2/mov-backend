@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { MediaService } from '@/media/media.service';
 import { Logger } from '@nestjs/common';
 
 export interface MessageDetails {
@@ -16,6 +17,7 @@ export interface MessageDetails {
     id: string;
     username: string;
     profileThumbnailPath: string | null;
+    profileThumbnailUrl: string | null;
   };
 }
 
@@ -34,7 +36,10 @@ export interface EventMessagesResponse {
 export class MessageService {
   private readonly logger = new Logger(MessageService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mediaService: MediaService,
+  ) {}
 
   // Get messages for an event with pagination
   async getMessages(
@@ -68,8 +73,28 @@ export class MessageService {
       }),
     ]);
 
+    // Add photo thumbnail URLs for message senders
+    const messagesWithThumbnails = await Promise.all(
+      messages.map(async (message) => {
+        let senderProfileThumbnailUrl: string | null = null;
+        if (message.sender.profileThumbnailPath) {
+          senderProfileThumbnailUrl =
+            await this.mediaService.getPresignedDownloadUrl(
+              message.sender.profileThumbnailPath,
+            );
+        }
+        return {
+          ...message,
+          sender: {
+            ...message.sender,
+            profileThumbnailUrl: senderProfileThumbnailUrl,
+          },
+        };
+      }),
+    );
+
     return {
-      messages: messages.reverse(), // Reverse to show oldest first in UI
+      messages: messagesWithThumbnails.reverse(), // Reverse to show oldest first in UI
       hasMore: messages.length === limit,
       page,
       total,
@@ -106,7 +131,22 @@ export class MessageService {
       },
     });
 
-    return message;
+    // Add photo thumbnail URL for the sender
+    let senderProfileThumbnailUrl: string | null = null;
+    if (message.sender.profileThumbnailPath) {
+      senderProfileThumbnailUrl =
+        await this.mediaService.getPresignedDownloadUrl(
+          message.sender.profileThumbnailPath,
+        );
+    }
+
+    return {
+      ...message,
+      sender: {
+        ...message.sender,
+        profileThumbnailUrl: senderProfileThumbnailUrl,
+      },
+    };
   }
 
   // Get message preview for the event detail page
@@ -134,13 +174,25 @@ export class MessageService {
         orderBy: { createdAt: 'desc' },
       });
 
+      // Add photo thumbnail URL for the last message sender
+      let lastMessageSenderThumbnailUrl: string | null = null;
+      if (lastMessage?.sender.profileThumbnailPath) {
+        lastMessageSenderThumbnailUrl =
+          await this.mediaService.getPresignedDownloadUrl(
+            lastMessage.sender.profileThumbnailPath,
+          );
+      }
+
       return {
         hasMessages: messageCount > 0,
         messageCount,
         lastMessage: lastMessage
           ? {
               content: lastMessage.content,
-              sender: lastMessage.sender,
+              sender: {
+                ...lastMessage.sender,
+                profileThumbnailUrl: lastMessageSenderThumbnailUrl,
+              },
               createdAt: lastMessage.createdAt,
               type: lastMessage.type,
             }

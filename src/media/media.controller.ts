@@ -1,12 +1,11 @@
 import { Controller, Get, Query, BadRequestException } from '@nestjs/common';
 import { MediaService } from './media.service';
 import { Logger } from '@nestjs/common';
-
-interface UploadUrlResponse {
-  uploadUrl: string;
-  fileName: string;
-  type: 'thumbnail' | 'image' | 'video';
-}
+import {
+  GetUploadUrlsResponse,
+  MediaEntityType,
+  UploadUrlResponse,
+} from '@movapp/types';
 
 @Controller('media')
 export class MediaController {
@@ -17,8 +16,8 @@ export class MediaController {
   @Get('upload-urls')
   async getUploadUrls(
     @Query('userId') userId: string,
-    @Query('entityType') entityType: 'video' | 'user' | 'event',
-  ): Promise<{ urls: UploadUrlResponse[] }> {
+    @Query('entityType') entityType: MediaEntityType,
+  ): Promise<GetUploadUrlsResponse> {
     if (!userId) {
       throw new BadRequestException('userId is required');
     }
@@ -41,12 +40,12 @@ export class MediaController {
           {
             uploadUrl: videoUpload.uploadUrl,
             fileName: videoUpload.fileName,
-            type: 'video',
+            type: 'video' as const,
           },
           {
             uploadUrl: thumbnailUpload.uploadUrl,
             fileName: thumbnailUpload.fileName,
-            type: 'thumbnail',
+            type: 'thumbnail' as const,
           },
         ];
       } else {
@@ -60,12 +59,12 @@ export class MediaController {
           {
             uploadUrl: thumbnailResult.uploadUrl,
             fileName: thumbnailResult.fileName,
-            type: 'thumbnail',
+            type: 'thumbnail' as const,
           },
           {
             uploadUrl: imageResult.uploadUrl,
             fileName: imageResult.fileName,
-            type: 'image',
+            type: 'image' as const,
           },
         ];
       }

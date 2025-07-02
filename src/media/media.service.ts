@@ -11,6 +11,7 @@ import { createS3Client, getBucketName } from '@/config/s3.config';
 import type { EnvConfig } from '@/config/validation.schema';
 import { v4 as uuidv4 } from 'uuid';
 import { Logger } from '@nestjs/common';
+import { MediaEntityType, MediaSize } from '@movapp/types';
 
 @Injectable()
 export class MediaService {
@@ -94,8 +95,8 @@ export class MediaService {
 
   generateFileName(
     id: string,
-    entityType: 'video' | 'event' | 'user',
-    size: 'thumbnail' | 'full',
+    entityType: MediaEntityType,
+    size: MediaSize,
   ): string {
     const timestamp = Date.now();
     const uuid = uuidv4();
@@ -105,8 +106,8 @@ export class MediaService {
 
   async generateUploadUrl(
     id: string,
-    size: 'thumbnail' | 'full',
-    entityType: 'video' | 'event' | 'user',
+    size: MediaSize,
+    entityType: MediaEntityType,
   ): Promise<{
     uploadUrl: string;
     fileName: string;

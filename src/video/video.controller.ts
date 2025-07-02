@@ -10,43 +10,15 @@ import {
 import { VideoService } from './video.service';
 import { MediaService } from '@/media/media.service';
 import { Logger } from '@nestjs/common';
-
-interface VideoWithUrls {
-  id: string;
-  videoPath: string;
-  thumbnailPath: string;
-  videoUrl: string;
-  thumbnailUrl: string;
-  createdAt: Date;
-  user: {
-    id: string;
-    username: string;
-    profileThumbnailPath: string | null;
-  };
-}
-
-interface VideoFeedResult {
-  videos: VideoWithUrls[];
-  nextCursor: string | null;
-  hasMore: boolean;
-}
-
-interface AssociateEventsDto {
-  fileName: string;
-  userId: string;
-  eventIds: string[];
-}
-
-interface DeleteVideoDto {
-  fileName: string;
-  userId: string;
-}
-
-interface ConfirmUploadDto {
-  videoPath: string;
-  thumbnailPath: string;
-  userId: string;
-}
+import {
+  ConfirmUploadRequest,
+  ConfirmUploadResponse,
+  AssociateEventsRequest,
+  AssociateEventsResponse,
+  DeleteVideoRequest,
+  DeleteVideoResponse,
+  VideoFeedResponse,
+} from '@movapp/types';
 
 @Controller('videos')
 export class VideoController {
@@ -67,7 +39,7 @@ export class VideoController {
     @Query('cursor') cursor?: string,
     @Query('limit') limitParam?: string,
     @Query('userId') userId?: string, // Optional: filter by specific user
-  ): Promise<{ success: boolean } & VideoFeedResult> {
+  ): Promise<VideoFeedResponse> {
     const limit = limitParam ? parseInt(limitParam, 10) : 20;
 
     if (limit > 50) {
@@ -81,10 +53,7 @@ export class VideoController {
         userId,
       });
 
-      return {
-        success: true,
-        ...result,
-      };
+      return result;
     } catch (error) {
       this.logger.error('Error fetching video feed:', error);
       throw new BadRequestException('Failed to fetch video feed');
@@ -96,7 +65,9 @@ export class VideoController {
    * Confirm upload and save to database with thumbnail
    */
   @Post('confirm-upload')
-  async confirmUpload(@Body() body: ConfirmUploadDto) {
+  async confirmUpload(
+    @Body() body: ConfirmUploadRequest,
+  ): Promise<ConfirmUploadResponse> {
     if (!body.videoPath || !body.thumbnailPath || !body.userId) {
       throw new BadRequestException(
         'videoPath, thumbnailPath and userId are required',
@@ -149,7 +120,9 @@ export class VideoController {
    * Associate video with events and mark as published
    */
   @Post('associate-events')
-  async associateEvents(@Body() body: AssociateEventsDto) {
+  async associateEvents(
+    @Body() body: AssociateEventsRequest,
+  ): Promise<AssociateEventsResponse> {
     if (!body.fileName || !body.userId || !body.eventIds) {
       throw new BadRequestException(
         'fileName, userId, and eventIds are required',
@@ -173,6 +146,10 @@ export class VideoController {
         body.eventIds,
       );
 
+      if (!updatedVideo) {
+        throw new BadRequestException('Failed to associate events');
+      }
+
       return {
         success: true,
         video: updatedVideo,
@@ -194,7 +171,9 @@ export class VideoController {
    * Delete video from R2 and database (only if no event associations)
    */
   @Post('delete')
-  async deleteVideo(@Body() body: DeleteVideoDto) {
+  async deleteVideo(
+    @Body() body: DeleteVideoRequest,
+  ): Promise<DeleteVideoResponse> {
     if (!body.fileName || !body.userId) {
       throw new BadRequestException('fileName and userId are required');
     }

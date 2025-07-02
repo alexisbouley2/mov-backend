@@ -2,39 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MediaService } from '@/media/media.service';
 import { Logger } from '@nestjs/common';
-
-interface Video {
-  id: string;
-  videoPath: string;
-  thumbnailPath: string;
-}
-
-interface VideoFeedOptions {
-  cursor?: string;
-  limit: number;
-  userId?: string; // Filter by specific user ID
-}
-
-interface VideoWithUrls {
-  id: string;
-  videoPath: string;
-  thumbnailPath: string;
-  videoUrl: string;
-  thumbnailUrl: string;
-  createdAt: Date;
-  user: {
-    id: string;
-    username: string;
-    profileThumbnailPath: string | null;
-    profileThumbnailUrl: string | null;
-  };
-}
-
-interface VideoFeedResult {
-  videos: VideoWithUrls[];
-  nextCursor: string | null;
-  hasMore: boolean;
-}
+import {
+  Video,
+  VideoFeedOptions,
+  VideoWithUrls,
+  VideoFeedResponse,
+} from '@movapp/types';
 
 @Injectable()
 export class VideoService {
@@ -67,7 +40,7 @@ export class VideoService {
   async getEventVideoFeed(
     eventId: string,
     options: VideoFeedOptions,
-  ): Promise<VideoFeedResult> {
+  ): Promise<VideoFeedResponse> {
     const { cursor, limit, userId } = options;
 
     // Build where clause with proper typing

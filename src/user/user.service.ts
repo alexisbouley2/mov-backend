@@ -3,6 +3,12 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { MediaService } from '@/media/media.service';
 import { SupabaseService } from '@/supabase/supabase.service';
 import { Logger } from '@nestjs/common';
+import {
+  User,
+  UpdateUserRequest,
+  UpdateUserResponse,
+  DeleteUserResponse,
+} from '@movapp/types';
 
 @Injectable()
 export class UserService {
@@ -14,7 +20,7 @@ export class UserService {
     private supabaseService: SupabaseService,
   ) {}
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<User | null> {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) return null;
 
@@ -24,17 +30,21 @@ export class UserService {
         user.profileImagePath,
       );
     }
-    return { ...user, profileImageUrl };
+
+    let profileThumbnailUrl: string | null = null;
+    if (user.profileThumbnailPath) {
+      profileThumbnailUrl = await this.mediaService.getPresignedDownloadUrl(
+        user.profileThumbnailPath,
+      );
+    }
+
+    return { ...user, profileImageUrl, profileThumbnailUrl };
   }
 
   async update(
     id: string,
-    data: {
-      username?: string;
-      profileImagePath?: string;
-      profileThumbnailPath?: string;
-    },
-  ) {
+    data: UpdateUserRequest,
+  ): Promise<UpdateUserResponse> {
     // Get current user to check for existing photos
     const currentUser = await this.prisma.user.findUnique({
       where: { id },
@@ -73,10 +83,20 @@ export class UserService {
       );
     }
 
-    return { ...updatedUser, profileImageUrl, profileThumbnailUrl };
+    const userWithUrls: User = {
+      ...updatedUser,
+      profileImageUrl,
+      profileThumbnailUrl,
+    };
+
+    return {
+      success: true,
+      user: userWithUrls,
+      message: 'User updated successfully',
+    };
   }
 
-  async remove(id: string) {
+  async remove(id: string): Promise<DeleteUserResponse> {
     // Get user data for cleanup
     const user = await this.prisma.user.findUnique({
       where: { id },
@@ -106,7 +126,7 @@ export class UserService {
     }
 
     // Soft delete - anonymize user
-    return this.prisma.user.update({
+    await this.prisma.user.update({
       where: { id },
       data: {
         phone: null, // Free up phone for reuse
@@ -117,5 +137,10 @@ export class UserService {
         deletedAt: new Date(),
       },
     });
+
+    return {
+      success: true,
+      message: 'User deleted successfully',
+    };
   }
 }

@@ -7,30 +7,11 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { MediaService } from '@/media/media.service';
 import { Logger } from '@nestjs/common';
-
-export interface MessageDetails {
-  id: string;
-  content: string;
-  createdAt: Date;
-  type: string;
-  sender: {
-    id: string;
-    username: string;
-    profileThumbnailPath: string | null;
-    profileThumbnailUrl: string | null;
-  };
-}
-
-export interface EventMessagesResponse {
-  messages: MessageDetails[];
-  hasMore: boolean;
-  page: number;
-  total: number;
-  event: {
-    id: string;
-    name: string | null;
-  };
-}
+import {
+  SendMessageResponse,
+  EventMessagesResponse,
+  MessagePreviewResponse,
+} from '@movapp/types';
 
 @Injectable()
 export class MessageService {
@@ -110,7 +91,7 @@ export class MessageService {
     userId: string,
     content: string,
     type: string = 'text',
-  ): Promise<MessageDetails> {
+  ): Promise<SendMessageResponse> {
     await this.verifyEventAccess(eventId, userId);
 
     const message = await this.prisma.message.create({
@@ -150,7 +131,10 @@ export class MessageService {
   }
 
   // Get message preview for the event detail page
-  async getMessagePreview(eventId: string, userId: string) {
+  async getMessagePreview(
+    eventId: string,
+    userId: string,
+  ): Promise<MessagePreviewResponse> {
     try {
       await this.verifyEventAccess(eventId, userId);
 

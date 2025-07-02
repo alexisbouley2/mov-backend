@@ -2,6 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MediaService } from '@/media/media.service';
 import { Logger } from '@nestjs/common';
+import {
+  CreateEventRequest,
+  UpdateEventRequest,
+  Event,
+  CategorizedEventsResponse,
+  EventParticipantsResponse,
+  EventWithDetails,
+} from '@movapp/types';
 
 @Injectable()
 export class EventService {
@@ -12,15 +20,7 @@ export class EventService {
     private mediaService: MediaService,
   ) {}
 
-  async create(data: {
-    name: string;
-    information?: string;
-    date: Date;
-    location?: string;
-    adminId: string;
-    coverImagePath?: string;
-    coverThumbnailPath?: string;
-  }) {
+  async create(data: CreateEventRequest): Promise<Event> {
     const event = await this.prisma.event.create({ data });
 
     // Add admin as participant
@@ -31,10 +31,14 @@ export class EventService {
       },
     });
 
-    return event;
+    return {
+      ...event,
+      coverImageUrl: null,
+      coverThumbnailUrl: null,
+    };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<EventWithDetails | null> {
     const event = await this.prisma.event.findUnique({
       where: { id },
       include: {
@@ -113,15 +117,8 @@ export class EventService {
 
   async update(
     id: string,
-    data: {
-      name?: string;
-      information?: string;
-      date?: Date;
-      location?: string;
-      coverImagePath?: string;
-      coverThumbnailPath?: string;
-    },
-  ) {
+    data: UpdateEventRequest,
+  ): Promise<{ message: string }> {
     // Get current event to check for existing photos
     const currentEvent = await this.prisma.event.findUnique({
       where: { id },
@@ -152,7 +149,7 @@ export class EventService {
     return { message: 'Event updated successfully' };
   }
 
-  async getUserEvents(userId: string) {
+  async getUserEvents(userId: string): Promise<CategorizedEventsResponse> {
     const events = await this.prisma.event.findMany({
       where: {
         participants: { some: { userId } },
@@ -203,6 +200,12 @@ export class EventService {
 
         return {
           ...event,
+          admin: {
+            ...event.admin,
+            profileThumbnailUrl: null,
+            profileImageUrl: null,
+          },
+          coverImageUrl: null,
           coverThumbnailUrl,
           participants: participantsWithProfileThumbnailUrls,
         };
@@ -237,7 +240,7 @@ export class EventService {
     userId: string,
     page: number = 1,
     limit: number = 20,
-  ) {
+  ): Promise<EventParticipantsResponse> {
     // Verify user has access to event
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },

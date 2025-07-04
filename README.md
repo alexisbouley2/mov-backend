@@ -44,6 +44,20 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## Docker
+
+You can also run the application using Docker:
+
+```bash
+# Build the Docker image
+$ docker build -t mov-backend .
+
+# Run the container
+$ docker run -p 3000:3000 --env-file .env.local mov-backend
+```
+
+**Note:** Make sure you have a `.env.local` file with the necessary environment variables before running the Docker container.
+
 ## Run tests
 
 ```bash

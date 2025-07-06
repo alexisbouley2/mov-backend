@@ -9,7 +9,9 @@ import {
   CategorizedEventsResponse,
   EventParticipantsResponse,
   EventWithDetails,
+  DeleteEventResponse,
 } from '@movapp/types';
+import { VideoService } from '@/video/video.service';
 
 @Injectable()
 export class EventService {
@@ -18,6 +20,7 @@ export class EventService {
   constructor(
     private prisma: PrismaService,
     private mediaService: MediaService,
+    private videoService: VideoService,
   ) {}
 
   async create(data: CreateEventRequest): Promise<Event> {
@@ -313,5 +316,57 @@ export class EventService {
         name: event.name,
       },
     };
+  }
+
+  async delete(eventId: string, userId: string): Promise<DeleteEventResponse> {
+    // Find event and check admin
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        admin: true,
+        videos: {
+          include: {
+            video: {
+              include: {
+                events: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!event) throw new Error('Event not found');
+    if (event.adminId !== userId)
+      throw new Error('Only admin can delete event');
+
+    // Delete event cover files from R2
+    const filesToDelete: string[] = [];
+    if (event.coverImagePath) filesToDelete.push(event.coverImagePath);
+    if (event.coverThumbnailPath) filesToDelete.push(event.coverThumbnailPath);
+    if (filesToDelete.length > 0) {
+      try {
+        await this.mediaService.deleteMultipleFiles(filesToDelete);
+      } catch (err) {
+        this.logger.error('Failed to delete event cover files:', err);
+      }
+    }
+
+    // For each video, if this is the last event, delete the video and its files
+    for (const videoEvent of event.videos) {
+      const video = videoEvent.video;
+      if (video.events.length === 1) {
+        // Only associated with this event
+        try {
+          await this.videoService.delete(video.id);
+        } catch (err) {
+          this.logger.error(`Failed to delete video ${video.id}:`, err);
+        }
+      }
+    }
+
+    // Delete the event (cascade will handle EventParticipant and VideoEvent)
+    await this.prisma.event.delete({ where: { id: eventId } });
+
+    return { message: 'Event deleted successfully' };
   }
 }

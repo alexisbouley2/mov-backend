@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { EventService } from './event.service';
 import {
@@ -16,6 +17,7 @@ import {
   EventParticipantsResponse,
   EventWithDetails,
   CategorizedEventsResponse,
+  DeleteEventResponse,
 } from '@movapp/types';
 
 @Controller('events')
@@ -62,5 +64,13 @@ export class EventController {
       pageNum,
       limitNum,
     );
+  }
+
+  @Delete(':id')
+  async delete(
+    @Param('id') id: string,
+    @Query('userId') userId: string,
+  ): Promise<DeleteEventResponse> {
+    return this.eventService.delete(id, userId);
   }
 }

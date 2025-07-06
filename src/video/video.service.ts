@@ -229,6 +229,67 @@ export class VideoService {
   }
 
   /**
+   * Report a video from an event
+   * Removes the video from the specific event and marks it as reported
+   */
+  async reportVideo(videoId: string, eventId: string, userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // Check if user is a participant of the event
+      const participant = await tx.eventParticipant.findUnique({
+        where: {
+          userId_eventId: {
+            userId,
+            eventId,
+          },
+        },
+      });
+
+      if (!participant) {
+        throw new Error('User is not a participant of this event');
+      }
+
+      // Check if video exists and is associated with the event
+      const videoEvent = await tx.videoEvent.findUnique({
+        where: {
+          videoId_eventId: {
+            videoId,
+            eventId,
+          },
+        },
+        include: {
+          video: true,
+        },
+      });
+
+      if (!videoEvent) {
+        throw new Error('Video is not associated with this event');
+      }
+
+      // Remove video from the event
+      await tx.videoEvent.delete({
+        where: {
+          videoId_eventId: {
+            videoId,
+            eventId,
+          },
+        },
+      });
+
+      // Mark video as reported
+      await tx.video.update({
+        where: { id: videoId },
+        data: {
+          reported: true,
+          reportedAt: new Date(),
+          reportedBy: userId,
+        },
+      });
+
+      return videoEvent.video;
+    });
+  }
+
+  /**
    * Clean up orphaned videos
    */
   async cleanupOrphanedVideos() {

@@ -33,11 +33,15 @@ model Video {
   user          User     @relation(fields: [userId], references: [id])
   userId        String
   status        String   @default("pending") // "pending" | "published"
+  reported      Boolean  @default(false)
+  reportedAt    DateTime?
+  reportedBy    String?
   
   events        VideoEvent[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
+  @@index([reported, createdAt])
 }
 
 model Event {

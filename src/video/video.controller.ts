@@ -17,6 +17,8 @@ import {
   AssociateEventsResponse,
   DeleteVideoRequest,
   DeleteVideoResponse,
+  ReportVideoRequest,
+  ReportVideoResponse,
   VideoFeedResponse,
 } from '@movapp/types';
 
@@ -209,6 +211,42 @@ export class VideoController {
       }
 
       throw new BadRequestException('Failed to delete video');
+    }
+  }
+
+  /**
+   * POST /videos/report
+   * Report a video from an event (removes it from the event and marks as reported)
+   */
+  @Post('report')
+  async reportVideo(
+    @Body() body: ReportVideoRequest,
+  ): Promise<ReportVideoResponse> {
+    if (!body.videoId || !body.userId || !body.eventId) {
+      throw new BadRequestException(
+        'videoId, userId, and eventId are required',
+      );
+    }
+
+    try {
+      await this.videoService.reportVideo(
+        body.videoId,
+        body.eventId,
+        body.userId,
+      );
+
+      return {
+        success: true,
+        message: 'Video reported and removed from event successfully',
+      };
+    } catch (error) {
+      this.logger.error('Error reporting video:', error);
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException('Failed to report video');
     }
   }
 }

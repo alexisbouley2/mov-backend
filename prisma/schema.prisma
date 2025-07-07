@@ -58,6 +58,7 @@ model Event {
   adminId     String
 
   messages    Message[]
+  invites     EventInvite[]
   
   participants EventParticipant[]
   videos      VideoEvent[]
@@ -103,5 +104,19 @@ model Message {
   
   @@index([eventId, createdAt])
   @@index([senderId])
+}
+
+model EventInvite {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdBy String   // userId who created the invite
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  
+  @@index([eventId])
+  @@index([token])
+  @@index([expiresAt])
 }
 

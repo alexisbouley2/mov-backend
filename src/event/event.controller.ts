@@ -18,6 +18,10 @@ import {
   EventWithDetails,
   CategorizedEventsResponse,
   DeleteEventResponse,
+  GenerateInviteRequest,
+  GenerateInviteResponse,
+  ValidateInviteRequest,
+  ValidateInviteResponse,
 } from '@movapp/types';
 
 @Controller('events')
@@ -64,6 +68,28 @@ export class EventController {
       pageNum,
       limitNum,
     );
+  }
+
+  @Post(':id/invite')
+  generateInvite(
+    @Param('id') eventId: string,
+    @Body() body: GenerateInviteRequest,
+  ): Promise<GenerateInviteResponse> {
+    return this.eventService.generateInvite(eventId, body.userId);
+  }
+
+  @Post('invite/validate')
+  validateInvite(
+    @Body() body: ValidateInviteRequest,
+  ): Promise<ValidateInviteResponse> {
+    return this.eventService.validateInvite(body.token);
+  }
+
+  @Post('invite/accept')
+  acceptInvite(
+    @Body() body: { token: string; userId: string },
+  ): Promise<{ success: boolean; message: string }> {
+    return this.eventService.acceptInvite(body.token, body.userId);
   }
 
   @Delete(':id')

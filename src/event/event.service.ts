@@ -10,8 +10,11 @@ import {
   EventParticipantsResponse,
   EventWithDetails,
   DeleteEventResponse,
+  GenerateInviteResponse,
+  ValidateInviteResponse,
 } from '@movapp/types';
 import { VideoService } from '@/video/video.service';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class EventService {
@@ -368,5 +371,141 @@ export class EventService {
     await this.prisma.event.delete({ where: { id: eventId } });
 
     return { message: 'Event deleted successfully' };
+  }
+
+  async generateInvite(
+    eventId: string,
+    userId: string,
+  ): Promise<GenerateInviteResponse> {
+    // Verify user is a participant of the event (not just admin)
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        participants: {
+          where: { userId },
+          select: { userId: true },
+        },
+      },
+    });
+
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    // Check if user is a participant (not just admin)
+    const isParticipant = event.participants.length > 0;
+    if (!isParticipant) {
+      throw new Error('You must be a participant to generate invites');
+    }
+
+    // Generate a secure random token
+    const token = randomBytes(32).toString('hex');
+
+    // Set expiration to 1 day from now
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 1);
+
+    // Create the invite
+    await this.prisma.eventInvite.create({
+      data: {
+        token,
+        eventId,
+        createdBy: userId,
+        expiresAt,
+      },
+    });
+
+    return {
+      token,
+    };
+  }
+
+  async validateInvite(token: string): Promise<ValidateInviteResponse> {
+    const invite = await this.prisma.eventInvite.findUnique({
+      where: { token },
+      select: {
+        expiresAt: true,
+      },
+    });
+
+    if (!invite) {
+      return {
+        valid: false,
+        error: 'Invalid invite token',
+      };
+    }
+
+    if (invite.expiresAt < new Date()) {
+      return {
+        valid: false,
+        error: 'Invite has expired',
+      };
+    }
+
+    return {
+      valid: true,
+      error: null,
+    };
+  }
+
+  async acceptInvite(
+    token: string,
+    userId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.prisma.$transaction(async (tx) => {
+      // Find and validate the invite
+      const invite = await tx.eventInvite.findUnique({
+        where: { token },
+        include: {
+          event: {
+            select: { id: true },
+          },
+        },
+      });
+
+      if (!invite) {
+        return {
+          success: false,
+          message: 'Invalid invite token',
+        };
+      }
+
+      if (invite.expiresAt < new Date()) {
+        return {
+          success: false,
+          message: 'Invite has expired',
+        };
+      }
+
+      // Check if user is already a participant
+      const existingParticipant = await tx.eventParticipant.findUnique({
+        where: {
+          userId_eventId: {
+            userId,
+            eventId: invite.eventId,
+          },
+        },
+      });
+
+      if (existingParticipant) {
+        return {
+          success: false,
+          message: 'You are already a participant of this event',
+        };
+      }
+
+      // Add user as participant (no need to mark invite as used since we allow multiple uses)
+      await tx.eventParticipant.create({
+        data: {
+          userId,
+          eventId: invite.eventId,
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Successfully joined the event',
+      };
+    });
   }
 }

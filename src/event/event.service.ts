@@ -30,11 +30,12 @@ export class EventService {
   async create(data: CreateEventRequest): Promise<Event> {
     const event = await this.prisma.event.create({ data });
 
-    // Add admin as participant
+    // Add admin as participant (confirmed by default)
     await this.prisma.eventParticipant.create({
       data: {
         userId: data.adminId,
         eventId: event.id,
+        confirmed: true,
       },
     });
 
@@ -165,6 +166,8 @@ export class EventService {
         admin: true,
         participants: {
           include: { user: true },
+          take: 6,
+          orderBy: { joinedAt: 'desc' },
         },
         _count: {
           select: { videos: true },
@@ -247,6 +250,7 @@ export class EventService {
     userId: string,
     page: number = 1,
     limit: number = 20,
+    confirmed?: boolean,
   ): Promise<EventParticipantsResponse> {
     // Verify user has access to event
     const event = await this.prisma.event.findUnique({
@@ -270,9 +274,20 @@ export class EventService {
 
     const skip = (page - 1) * limit;
 
+    interface WhereClause {
+      eventId: string;
+      confirmed?: boolean;
+    }
+
+    // Add confirmed filter if provided
+    const whereClause: WhereClause = { eventId };
+    if (typeof confirmed === 'boolean') {
+      whereClause.confirmed = confirmed;
+    }
+
     const [participants, total] = await Promise.all([
       this.prisma.eventParticipant.findMany({
-        where: { eventId },
+        where: whereClause,
         include: {
           user: {
             select: {
@@ -287,7 +302,7 @@ export class EventService {
         skip,
       }),
       this.prisma.eventParticipant.count({
-        where: { eventId },
+        where: whereClause,
       }),
     ]);
 
@@ -498,11 +513,12 @@ export class EventService {
         };
       }
 
-      // Add user as participant (no need to mark invite as used since we allow multiple uses)
+      // Add user as participant (not confirmed by default)
       await tx.eventParticipant.create({
         data: {
           userId,
           eventId: invite.eventId,
+          confirmed: false,
         },
       });
 
@@ -512,5 +528,43 @@ export class EventService {
         eventId: invite.eventId,
       };
     });
+  }
+
+  async updateParticipantConfirmation(
+    eventId: string,
+    userId: string,
+    confirmed: boolean,
+  ): Promise<{ message: string }> {
+    // Verify user has access to event
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        participants: {
+          where: { userId },
+          select: { userId: true },
+        },
+      },
+    });
+
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    const hasAccess = event.participants.length > 0;
+    if (!hasAccess) {
+      throw new Error('You do not have access to this event');
+    }
+
+    await this.prisma.eventParticipant.update({
+      where: {
+        userId_eventId: {
+          userId,
+          eventId,
+        },
+      },
+      data: { confirmed },
+    });
+
+    return { message: 'Participant confirmation status updated successfully' };
   }
 }

@@ -61,14 +61,19 @@ export class EventController {
     @Param('userId') userId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('confirmed') confirmed?: string,
   ): Promise<EventParticipantsResponse> {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 20;
+    let confirmedBool: boolean | undefined = undefined;
+    if (confirmed === 'true') confirmedBool = true;
+    if (confirmed === 'false') confirmedBool = false;
     return this.eventService.getEventParticipants(
       eventId,
       userId,
       pageNum,
       limitNum,
+      confirmedBool,
     );
   }
 
@@ -100,5 +105,18 @@ export class EventController {
     @Query('userId') userId: string,
   ): Promise<DeleteEventResponse> {
     return this.eventService.delete(id, userId);
+  }
+
+  @Patch(':id/participants/:userId/confirm')
+  updateParticipantConfirmation(
+    @Param('id') eventId: string,
+    @Param('userId') userId: string,
+    @Body() body: { confirmed: boolean },
+  ): Promise<UpdateEventResponse> {
+    return this.eventService.updateParticipantConfirmation(
+      eventId,
+      userId,
+      body.confirmed,
+    );
   }
 }

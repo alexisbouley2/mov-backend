@@ -85,8 +85,10 @@ model EventParticipant {
   user      User     @relation(fields: [userId], references: [id])
   userId    String
   joinedAt  DateTime @default(now())
+  confirmed Boolean  @default(false)
 
   @@unique([userId, eventId], name: "userId_eventId")
+  @@index([eventId, confirmed])
 }
 
 model Message {

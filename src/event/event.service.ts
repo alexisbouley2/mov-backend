@@ -12,6 +12,7 @@ import {
   DeleteEventResponse,
   GenerateInviteResponse,
   ValidateInviteResponse,
+  AcceptInviteResponse,
 } from '@movapp/types';
 import { VideoService } from '@/video/video.service';
 import { randomBytes } from 'crypto';
@@ -451,7 +452,7 @@ export class EventService {
   async acceptInvite(
     token: string,
     userId: string,
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<AcceptInviteResponse> {
     return this.prisma.$transaction(async (tx) => {
       // Find and validate the invite
       const invite = await tx.eventInvite.findUnique({
@@ -467,6 +468,7 @@ export class EventService {
         return {
           success: false,
           message: 'Invalid invite token',
+          eventId: null,
         };
       }
 
@@ -474,6 +476,7 @@ export class EventService {
         return {
           success: false,
           message: 'Invite has expired',
+          eventId: null,
         };
       }
 
@@ -489,8 +492,9 @@ export class EventService {
 
       if (existingParticipant) {
         return {
-          success: false,
+          success: true,
           message: 'You are already a participant of this event',
+          eventId: invite.eventId,
         };
       }
 
@@ -505,6 +509,7 @@ export class EventService {
       return {
         success: true,
         message: 'Successfully joined the event',
+        eventId: invite.eventId,
       };
     });
   }

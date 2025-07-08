@@ -22,6 +22,8 @@ import {
   GenerateInviteResponse,
   ValidateInviteRequest,
   ValidateInviteResponse,
+  AcceptInviteResponse,
+  AcceptInviteRequest,
 } from '@movapp/types';
 
 @Controller('events')
@@ -87,8 +89,8 @@ export class EventController {
 
   @Post('invite/accept')
   acceptInvite(
-    @Body() body: { token: string; userId: string },
-  ): Promise<{ success: boolean; message: string }> {
+    @Body() body: AcceptInviteRequest,
+  ): Promise<AcceptInviteResponse> {
     return this.eventService.acceptInvite(body.token, body.userId);
   }
 

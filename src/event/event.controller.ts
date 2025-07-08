@@ -24,6 +24,7 @@ import {
   ValidateInviteResponse,
   AcceptInviteResponse,
   AcceptInviteRequest,
+  DeleteParticipantResponse,
 } from '@movapp/types';
 
 @Controller('events')
@@ -117,6 +118,19 @@ export class EventController {
       eventId,
       userId,
       body.confirmed,
+    );
+  }
+
+  @Delete(':id/participants/:participantUserId')
+  deleteParticipant(
+    @Param('id') eventId: string,
+    @Param('participantUserId') participantUserId: string,
+    @Query('adminId') adminId: string,
+  ): Promise<DeleteParticipantResponse> {
+    return this.eventService.deleteParticipant(
+      eventId,
+      participantUserId,
+      adminId,
     );
   }
 }

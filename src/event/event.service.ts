@@ -567,4 +567,52 @@ export class EventService {
 
     return { message: 'Participant confirmation status updated successfully' };
   }
+
+  async deleteParticipant(
+    eventId: string,
+    participantUserId: string,
+    adminId: string,
+  ): Promise<{ message: string }> {
+    // Find event and verify admin
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        admin: true,
+        participants: {
+          where: { userId: participantUserId },
+          include: { user: true },
+        },
+      },
+    });
+
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    if (event.adminId !== adminId) {
+      throw new Error('Only admin can delete participants');
+    }
+
+    // Check if trying to delete admin
+    if (participantUserId === adminId) {
+      throw new Error('Admin cannot remove themselves from the event');
+    }
+
+    // Check if participant exists
+    if (event.participants.length === 0) {
+      throw new Error('Participant not found in this event');
+    }
+
+    // Delete the participant
+    await this.prisma.eventParticipant.delete({
+      where: {
+        userId_eventId: {
+          userId: participantUserId,
+          eventId,
+        },
+      },
+    });
+
+    return { message: 'Participant removed successfully' };
+  }
 }

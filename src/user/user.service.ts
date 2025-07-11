@@ -8,6 +8,7 @@ import {
   UpdateUserRequest,
   UpdateUserResponse,
   DeleteUserResponse,
+  CheckContactsResponse,
 } from '@movapp/types';
 
 @Injectable()
@@ -39,6 +40,80 @@ export class UserService {
     }
 
     return { ...user, profileImageUrl, profileThumbnailUrl };
+  }
+
+  async checkContacts(
+    phoneNumbers: string[],
+    eventId: string,
+  ): Promise<CheckContactsResponse> {
+    try {
+      // Find users with the given phone numbers that are not deleted, including their event participation
+      const users = await this.prisma.user.findMany({
+        where: {
+          phone: {
+            in: phoneNumbers,
+          },
+          isDeleted: false,
+        },
+        include: {
+          eventParticipants: {
+            where: {
+              eventId: eventId,
+            },
+            select: {
+              confirmed: true,
+              joinedAt: true,
+            },
+          },
+        },
+      });
+
+      // Process each contact - only return MOV users with essential data
+      const contacts = await Promise.all(
+        phoneNumbers.map(async (phone) => {
+          const user = users.find((u) => u.phone === phone);
+
+          if (!user) {
+            return null; // Skip non-MOV users
+          }
+
+          // Get presigned URL for thumbnail
+          let profileThumbnailUrl: string | null = null;
+          if (user.profileThumbnailPath) {
+            profileThumbnailUrl =
+              await this.mediaService.getPresignedDownloadUrl(
+                user.profileThumbnailPath,
+              );
+          }
+
+          // Check event participation
+          const isParticipant = user.eventParticipants.length > 0;
+
+          return {
+            phone,
+            id: user.id,
+            profileThumbnailUrl,
+            isParticipant,
+          };
+        }),
+      );
+
+      // Filter out null values (non-MOV users)
+      const validContacts = contacts.filter((contact) => contact !== null);
+
+      return {
+        success: true,
+        contacts: validContacts,
+        message: `Found ${validContacts.length} MOV users`,
+      };
+    } catch (error) {
+      this.logger.error('Error checking contacts:', error);
+      return {
+        success: false,
+        contacts: [],
+        message: 'Failed to check contacts',
+      };
+    }
   }
 
   async update(
@@ -129,7 +204,7 @@ export class UserService {
     await this.prisma.user.update({
       where: { id },
       data: {
-        phone: null, // Free up phone for reuse
+        phone: '',
         username: 'Deleted User',
         profileImagePath: null,
         profileThumbnailPath: null,

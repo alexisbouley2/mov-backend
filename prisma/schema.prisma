@@ -11,7 +11,8 @@ datasource db {
 
 model User {
   id        String   @id @default(uuid())
-  phone     String?   @unique
+  phone     String   @unique
+  countryCode String   @default("+33")
   username  String
   profileImagePath     String? @unique
   profileThumbnailPath   String? @unique

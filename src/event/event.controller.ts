@@ -121,6 +121,15 @@ export class EventController {
     );
   }
 
+  @Post(':id/participants/:participantUserId')
+  addParticipant(
+    @Param('id') eventId: string,
+    @Param('participantUserId') participantUserId: string,
+    @Query('userId') userId: string,
+  ): Promise<{ message: string }> {
+    return this.eventService.addParticipant(eventId, participantUserId, userId);
+  }
+
   @Delete(':id/participants/:participantUserId')
   deleteParticipant(
     @Param('id') eventId: string,

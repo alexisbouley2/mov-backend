@@ -568,6 +568,57 @@ export class EventService {
     return { message: 'Participant confirmation status updated successfully' };
   }
 
+  async addParticipant(
+    eventId: string,
+    participantUserId: string,
+    userId: string,
+  ): Promise<{ message: string }> {
+    // Find event and verify user is a participant
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        participants: {
+          where: { userId: userId },
+          select: { userId: true },
+        },
+      },
+    });
+
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    // Check if the requesting user is a participant of the event
+    if (event.participants.length === 0) {
+      throw new Error('You must be a participant of this event to add others');
+    }
+
+    // Check if the user to be added is already a participant
+    const existingParticipant = await this.prisma.eventParticipant.findUnique({
+      where: {
+        userId_eventId: {
+          userId: participantUserId,
+          eventId,
+        },
+      },
+    });
+
+    if (existingParticipant) {
+      return { message: 'User is already a participant of this event' };
+    }
+
+    // Add user as participant (not confirmed by default)
+    await this.prisma.eventParticipant.create({
+      data: {
+        userId: participantUserId,
+        eventId,
+        confirmed: false,
+      },
+    });
+
+    return { message: 'Participant added successfully' };
+  }
+
   async deleteParticipant(
     eventId: string,
     participantUserId: string,

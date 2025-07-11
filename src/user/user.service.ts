@@ -92,6 +92,8 @@ export class UserService {
           return {
             phone,
             id: user.id,
+            username: user.username,
+            profileThumbnailPath: user.profileThumbnailPath,
             profileThumbnailUrl,
             isParticipant,
           };

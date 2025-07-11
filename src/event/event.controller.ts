@@ -78,14 +78,6 @@ export class EventController {
     );
   }
 
-  @Post(':id/invite')
-  generateInvite(
-    @Param('id') eventId: string,
-    @Body() body: GenerateInviteRequest,
-  ): Promise<GenerateInviteResponse> {
-    return this.eventService.generateInvite(eventId, body.userId);
-  }
-
   @Post('invite/validate')
   validateInvite(
     @Body() body: ValidateInviteRequest,
@@ -98,6 +90,14 @@ export class EventController {
     @Body() body: AcceptInviteRequest,
   ): Promise<AcceptInviteResponse> {
     return this.eventService.acceptInvite(body.token, body.userId);
+  }
+
+  @Post(':id/invite')
+  generateInvite(
+    @Param('id') eventId: string,
+    @Body() body: GenerateInviteRequest,
+  ): Promise<GenerateInviteResponse> {
+    return this.eventService.generateInvite(eventId, body.userId);
   }
 
   @Delete(':id')

@@ -193,6 +193,60 @@ export class MessageService {
     }
   }
 
+  // Get a single message with sender information
+  async getMessageById(
+    messageId: string,
+    userId: string,
+  ): Promise<SendMessageResponse | null> {
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            username: true,
+            profileThumbnailPath: true,
+          },
+        },
+        event: {
+          include: {
+            participants: {
+              where: { userId },
+              select: { userId: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!message) {
+      return null;
+    }
+
+    // Verify user has access to the event
+    const hasAccess = message.event.participants.length > 0;
+    if (!hasAccess) {
+      throw new ForbiddenException('You do not have access to this message');
+    }
+
+    // Add photo thumbnail URL for the sender
+    let senderProfileThumbnailUrl: string | null = null;
+    if (message.sender.profileThumbnailPath) {
+      senderProfileThumbnailUrl =
+        await this.mediaService.getPresignedDownloadUrl(
+          message.sender.profileThumbnailPath,
+        );
+    }
+
+    return {
+      ...message,
+      sender: {
+        ...message.sender,
+        profileThumbnailUrl: senderProfileThumbnailUrl,
+      },
+    };
+  }
+
   // Helper method to verify user has access to event
   private async verifyEventAccess(eventId: string, userId: string) {
     const event = await this.prisma.event.findUnique({

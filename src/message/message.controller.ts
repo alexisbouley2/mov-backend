@@ -48,4 +48,13 @@ export class MessageController {
       body.type || 'text',
     );
   }
+
+  // Get a single message by ID with sender information
+  @Get(':messageId/user/:userId')
+  getMessageById(
+    @Param('messageId') messageId: string,
+    @Param('userId') userId: string,
+  ): Promise<SendMessageResponse | null> {
+    return this.messageService.getMessageById(messageId, userId);
+  }
 }

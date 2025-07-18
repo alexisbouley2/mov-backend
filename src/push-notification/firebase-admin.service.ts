@@ -102,6 +102,7 @@ export class FirebaseAdminService implements OnModuleInit {
       body: string;
     },
     data?: Record<string, string>,
+    badgeCount?: number,
   ): Promise<string> {
     try {
       const message: admin.messaging.Message = {
@@ -121,7 +122,7 @@ export class FirebaseAdminService implements OnModuleInit {
             aps: {
               alert: notification,
               sound: 'default',
-              badge: 1,
+              badge: badgeCount || 1,
             },
           },
         },

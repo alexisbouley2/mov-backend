@@ -66,7 +66,6 @@ export class PushNotificationService {
             eventParticipants: {
               some: {
                 eventId,
-                confirmed: true,
               },
             },
           },
@@ -143,6 +142,84 @@ export class PushNotificationService {
         error,
       );
       throw error;
+    }
+  }
+
+  /**
+   * Create a notification record for tracking badges
+   */
+  async createNotification(data: {
+    userId: string;
+    eventId: string;
+    type: string;
+  }): Promise<void> {
+    try {
+      await this.prisma.pushNotification.create({
+        data: {
+          userId: data.userId,
+          eventId: data.eventId,
+          type: data.type,
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        `[NOTIFICATION_CREATE_ERROR] Failed to create notification record:`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * Get unread notification count for a user
+   */
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    try {
+      return await this.prisma.pushNotification.count({
+        where: {
+          userId,
+          isRead: false,
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        `[NOTIFICATION_COUNT_ERROR] Failed to get unread count for user ${userId}:`,
+        error,
+      );
+      return 0;
+    }
+  }
+
+  /**
+   * Mark all notifications for a specific event as read for a user
+   */
+  async markEventNotificationsAsRead(
+    userId: string,
+    eventId: string,
+  ): Promise<number> {
+    try {
+      const result = await this.prisma.pushNotification.updateMany({
+        where: {
+          userId,
+          eventId,
+          isRead: false,
+        },
+        data: {
+          isRead: true,
+          readAt: new Date(),
+        },
+      });
+
+      this.logger.log(
+        `[NOTIFICATION_READ] Marked ${result.count} notifications as read for user ${userId} and event ${eventId}`,
+      );
+
+      return result.count;
+    } catch (error) {
+      this.logger.error(
+        `[NOTIFICATION_READ_ERROR] Failed to mark notifications as read:`,
+        error,
+      );
+      return 0;
     }
   }
 }

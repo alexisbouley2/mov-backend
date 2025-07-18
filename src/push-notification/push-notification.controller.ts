@@ -1,41 +1,59 @@
-import { Controller, Get, Post, Delete, Body, Param } from '@nestjs/common';
-import { PushNotificationService } from './push-notification.service';
 import {
-  CreatePushTokenRequest,
-  PushToken,
-  RemovePushTokenRequest,
-} from '@movapp/types';
+  Controller,
+  Post,
+  Body,
+  Delete,
+  HttpCode,
+  HttpStatus,
+  Get,
+  Param,
+  Patch,
+} from '@nestjs/common';
+import { PushNotificationService } from './push-notification.service';
+import { CreatePushTokenRequest, PushToken } from '@movapp/types';
 
-@Controller('push-tokens')
+@Controller('push-notifications')
 export class PushNotificationController {
   constructor(
     private readonly pushNotificationService: PushNotificationService,
   ) {}
 
-  @Post()
-  async createToken(
-    @Body() createTokenDto: CreatePushTokenRequest,
-  ): Promise<PushToken> {
-    return await this.pushNotificationService.createToken(createTokenDto);
+  @Post('tokens')
+  @HttpCode(HttpStatus.CREATED)
+  async createToken(@Body() data: CreatePushTokenRequest): Promise<PushToken> {
+    return this.pushNotificationService.createToken(data);
   }
 
-  @Delete()
+  @Delete('tokens')
+  @HttpCode(HttpStatus.NO_CONTENT)
   async removeToken(
-    @Body() removeTokenDto: RemovePushTokenRequest,
-  ): Promise<{ success: boolean }> {
-    const success = await this.pushNotificationService.removeToken(
-      removeTokenDto.userId,
-      removeTokenDto.token,
-    );
-    return { success };
+    @Body() data: { userId: string; token: string },
+  ): Promise<void> {
+    await this.pushNotificationService.removeToken(data.userId, data.token);
   }
 
-  @Get('event/:eventId')
-  async getEventParticipantsTokens(
+  @Get('badges/:userId')
+  async getBadgeCount(
+    @Param('userId') userId: string,
+  ): Promise<{ count: number }> {
+    const count =
+      await this.pushNotificationService.getUnreadNotificationCount(userId);
+    return { count };
+  }
+
+  @Patch('badges/:userId/events/:eventId/read')
+  @HttpCode(HttpStatus.OK)
+  async markEventNotificationsAsRead(
+    @Param('userId') userId: string,
     @Param('eventId') eventId: string,
-  ): Promise<PushToken[]> {
-    return await this.pushNotificationService.getEventParticipantsTokens(
-      eventId,
-    );
+  ): Promise<{ markedCount: number; newBadgeCount: number }> {
+    const markedCount =
+      await this.pushNotificationService.markEventNotificationsAsRead(
+        userId,
+        eventId,
+      );
+    const newBadgeCount =
+      await this.pushNotificationService.getUnreadNotificationCount(userId);
+    return { markedCount, newBadgeCount };
   }
 }

@@ -23,6 +23,7 @@ model User {
   adminEvents Event[] @relation("AdminRelation")
   eventParticipants EventParticipant[]
   pushTokens PushToken[]
+  pushNotifications PushNotification[] @relation("UserNotifications")
   
   sentMessages Message[] @relation("MessageSender")
 }
@@ -61,6 +62,7 @@ model Event {
 
   messages    Message[]
   invites     EventInvite[]
+  pushNotifications PushNotification[] @relation("EventNotifications")
   
   participants EventParticipant[]
   videos      VideoEvent[]
@@ -134,5 +136,21 @@ model PushToken {
   
   @@unique([userId, token])
   @@index([userId, isActive])
+}
+
+model PushNotification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  eventId   String
+  event     Event    @relation("EventNotifications", fields: [eventId], references: [id], onDelete: Cascade)
+  type      String   // "new_message", "participant_added", etc.
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+  
+  @@index([userId, isRead])
+  @@index([eventId, userId])
+  @@index([userId, eventId, isRead])
 }
 

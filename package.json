@@ -19,12 +19,13 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prisma:generate": "npx prisma generate",
-    "migrate:dev": "env $(cat .env.local | xargs) npx prisma migrate dev"
+    "migrate:dev": "dotenv -e .env.local -- npx prisma migrate dev",
+    "migrate:reset": "dotenv -e .env.local -- npx prisma migrate reset"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.828.0",
     "@aws-sdk/s3-request-presigner": "^3.828.0",
-    "@movapp/types": "^1.0.38",
+    "@movapp/types": "^1.0.45",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
@@ -33,6 +34,7 @@
     "@prisma/client": "^6.9.0",
     "@supabase/supabase-js": "^2.50.0",
     "@types/fluent-ffmpeg": "^2.1.27",
+    "firebase-admin": "^13.4.0",
     "fluent-ffmpeg": "^2.1.3",
     "multer": "^2.0.1",
     "multer-s3": "^3.0.1",
@@ -57,6 +59,7 @@
     "@types/node": "^22.15.32",
     "@types/supertest": "^6.0.2",
     "@types/uuid": "^10.0.0",
+    "dotenv-cli": "^8.0.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",

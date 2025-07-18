@@ -13,6 +13,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { CleanupService } from './tasks/cleanup.service';
 import { MessageModule } from './message/message.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { PushNotificationModule } from './push-notification/push-notification.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -31,6 +32,7 @@ import configuration from './config/configuration';
     MediaModule,
     MessageModule,
     SupabaseModule,
+    PushNotificationModule,
   ],
   controllers: [AppController],
   providers: [PrismaService, AppService, CleanupService],

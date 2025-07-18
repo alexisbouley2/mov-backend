@@ -29,6 +29,11 @@ export const validationSchema = z.object({
     .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/, 'Invalid bucket name format'),
 
   CLOUDFLARE_R2_PUBLIC_URL: z.string().url(),
+
+  // Firebase Configuration
+  FIREBASE_PROJECT_ID: z.string().min(1),
+  FIREBASE_PRIVATE_KEY: z.string().min(1),
+  FIREBASE_CLIENT_EMAIL: z.string().email(),
 });
 
 export type EnvConfig = z.infer<typeof validationSchema>;

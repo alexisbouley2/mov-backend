@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MediaService } from '@/media/media.service';
+import { FCMService } from '@/push-notification/fcm.service';
 import { Logger } from '@nestjs/common';
 import {
   SendMessageResponse,
@@ -20,6 +21,7 @@ export class MessageService {
   constructor(
     private prisma: PrismaService,
     private mediaService: MediaService,
+    private fcmService: FCMService,
   ) {}
 
   // Get messages for an event with pagination
@@ -92,7 +94,7 @@ export class MessageService {
     content: string,
     type: string = 'text',
   ): Promise<SendMessageResponse> {
-    await this.verifyEventAccess(eventId, userId);
+    const event = await this.verifyEventAccess(eventId, userId);
 
     const message = await this.prisma.message.create({
       data: {
@@ -120,6 +122,19 @@ export class MessageService {
           message.sender.profileThumbnailPath,
         );
     }
+
+    // Envoyer les notifications push en arrière-plan (ne pas attendre)
+    this.fcmService
+      .sendNewMessageNotification({
+        eventId: event.id,
+        senderId: userId,
+        senderName: message.sender.username,
+        messageContent: content.trim(),
+        eventName: event.name || undefined,
+      })
+      .catch((error) => {
+        this.logger.error('Failed to send push notifications:', error);
+      });
 
     return {
       ...message,

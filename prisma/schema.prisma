@@ -22,6 +22,7 @@ model User {
   videos    Video[]
   adminEvents Event[] @relation("AdminRelation")
   eventParticipants EventParticipant[]
+  pushTokens PushToken[]
   
   sentMessages Message[] @relation("MessageSender")
 }
@@ -121,5 +122,17 @@ model EventInvite {
   @@index([eventId])
   @@index([token])
   @@index([expiresAt])
+}
+
+model PushToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastUsedAt DateTime @default(now())
+  isActive  Boolean  @default(true)
+  
+  @@unique([userId, token])
+  @@index([userId, isActive])
 }
 

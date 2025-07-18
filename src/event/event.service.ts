@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MediaService } from '@/media/media.service';
+import { FCMService } from '@/push-notification/fcm.service';
 import { Logger } from '@nestjs/common';
 import {
   CreateEventRequest,
@@ -25,6 +26,7 @@ export class EventService {
     private prisma: PrismaService,
     private mediaService: MediaService,
     private videoService: VideoService,
+    private fcmService: FCMService,
   ) {}
 
   async create(data: CreateEventRequest): Promise<Event> {
@@ -607,6 +609,22 @@ export class EventService {
       return { message: 'User is already a participant of this event' };
     }
 
+    // Get user information for notifications
+    const [adderUser, addedUser] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { username: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: participantUserId },
+        select: { username: true },
+      }),
+    ]);
+
+    if (!addedUser) {
+      throw new Error('User to be added not found');
+    }
+
     // Add user as participant (not confirmed by default)
     await this.prisma.eventParticipant.create({
       data: {
@@ -615,6 +633,23 @@ export class EventService {
         confirmed: false,
       },
     });
+
+    // Send push notification in background (don't await)
+    this.fcmService
+      .sendParticipantAddedNotification({
+        eventId: event.id,
+        addedUserId: participantUserId,
+        addedUserName: addedUser.username,
+        adderUserId: userId,
+        adderUserName: adderUser?.username || 'Unknown',
+        eventName: event.name || undefined,
+      })
+      .catch((error) => {
+        this.logger.error(
+          'Failed to send participant added push notifications:',
+          error,
+        );
+      });
 
     return { message: 'Participant added successfully' };
   }

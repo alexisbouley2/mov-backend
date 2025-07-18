@@ -71,6 +71,57 @@ export class FCMService {
   }
 
   /**
+   * Envoie une notification push quand un participant est ajouté à un événement
+   */
+  async sendParticipantAddedNotification(data: {
+    eventId: string;
+    addedUserId: string;
+    addedUserName: string;
+    adderUserId: string;
+    adderUserName: string;
+    eventName?: string;
+  }): Promise<void> {
+    try {
+      // Récupérer les tokens push de l'utilisateur ajouté uniquement
+      const addedUserTokens = await this.pushNotificationService.getUserTokens(
+        data.addedUserId,
+      );
+
+      if (addedUserTokens.length === 0) {
+        this.logger.debug(
+          `No active push tokens found for user ${data.addedUserId}`,
+        );
+        return;
+      }
+
+      // Préparer le payload de notification
+      const notification = {
+        title: 'Event Invitation',
+        body: `${data.adderUserName} invited you to join ${data.eventName || 'an event'}. Join the fun and give your MOV!`,
+      };
+
+      const payloadData = {
+        type: 'participant_added',
+        eventId: data.eventId,
+        addedUserId: data.addedUserId,
+        adderUserId: data.adderUserId,
+      };
+
+      // Envoyer les notifications en parallèle à tous les tokens de l'utilisateur ajouté
+      const sendPromises = addedUserTokens.map((tokenData) =>
+        this.sendFCMNotification(tokenData.token, notification, payloadData),
+      );
+
+      await Promise.allSettled(sendPromises);
+    } catch (error) {
+      this.logger.error(
+        `[NOTIFICATION_ERROR] Error sending push notifications for participant added:`,
+        error,
+      );
+    }
+  }
+
+  /**
    * Envoie une notification FCM à un token spécifique
    */
   private async sendFCMNotification(

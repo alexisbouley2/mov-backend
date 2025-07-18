@@ -16,9 +16,7 @@ export class PushNotificationController {
   async createToken(
     @Body() createTokenDto: CreatePushTokenRequest,
   ): Promise<PushToken> {
-    return await this.pushNotificationService.createOrUpdateToken(
-      createTokenDto,
-    );
+    return await this.pushNotificationService.createToken(createTokenDto);
   }
 
   @Delete()

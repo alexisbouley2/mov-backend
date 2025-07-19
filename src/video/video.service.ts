@@ -52,8 +52,8 @@ export class VideoService {
         };
       };
       userId?: string;
-      id?: {
-        lt: string;
+      createdAt?: {
+        lt: Date;
       };
     }
 
@@ -70,9 +70,10 @@ export class VideoService {
       whereClause.userId = userId;
     }
 
+    // Use timestamp-based cursor pagination
     if (cursor) {
-      whereClause.id = {
-        lt: cursor,
+      whereClause.createdAt = {
+        lt: new Date(cursor),
       };
     }
 
@@ -128,10 +129,10 @@ export class VideoService {
         }),
       );
 
-      // Set next cursor to the ID of the last video
+      // Set next cursor to the createdAt timestamp of the last video
       const nextCursor =
         hasMore && videosToReturn.length > 0
-          ? videosToReturn[videosToReturn.length - 1].id
+          ? videosToReturn[videosToReturn.length - 1].createdAt.toISOString()
           : null;
 
       return {

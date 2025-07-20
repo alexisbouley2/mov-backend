@@ -53,7 +53,6 @@ model Event {
   information String?
   date        DateTime
   createdAt   DateTime @default(now())
-  location    String?
   coverImagePath    String? @unique
   coverThumbnailPath String? @unique
 

@@ -206,7 +206,7 @@ export class UserService {
     await this.prisma.user.update({
       where: { id },
       data: {
-        phone: '',
+        phone: 'deleted-' + id,
         username: 'Deleted User',
         profileImagePath: null,
         profileThumbnailPath: null,

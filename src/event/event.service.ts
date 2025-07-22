@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MediaService } from '@/media/media.service';
 import { FCMService } from '@/push-notification/fcm.service';
@@ -52,7 +56,7 @@ export class EventService {
     };
   }
 
-  async findOne(id: string): Promise<EventWithDetails | null> {
+  async findOne(id: string, userId: string): Promise<EventWithDetails> {
     const event = await this.prisma.event.findUnique({
       where: { id },
       include: {
@@ -76,7 +80,24 @@ export class EventService {
       },
     });
 
-    if (!event) return null;
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    const eventParticipant = await this.prisma.eventParticipant.findUnique({
+      where: {
+        userId_eventId: {
+          userId: userId,
+          eventId: id,
+        },
+      },
+    });
+
+    if (!eventParticipant) {
+      throw new ForbiddenException('You do not have access to this event');
+    }
+
+    const isParticipant = eventParticipant.confirmed;
 
     // Add photo URL for event
     let coverImageUrl: string | null = null;
@@ -151,6 +172,7 @@ export class EventService {
             },
           }
         : null,
+      currentUserConfirmed: isParticipant,
     };
   }
 
@@ -328,7 +350,7 @@ export class EventService {
             },
           },
         },
-        orderBy: { joinedAt: 'desc' },
+        orderBy: [{ user: { username: 'asc' } }, { joinedAt: 'desc' }],
         take: limit,
         skip,
       }),

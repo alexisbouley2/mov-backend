@@ -44,8 +44,11 @@ export class EventController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<EventWithDetails | null> {
-    return this.eventService.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @Query('userId') userId: string,
+  ): Promise<EventWithDetails> {
+    return this.eventService.findOne(id, userId);
   }
 
   @Patch(':id')

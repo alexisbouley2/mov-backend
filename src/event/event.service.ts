@@ -70,6 +70,9 @@ export class EventService {
             },
           },
         },
+        _count: {
+          select: { participants: true },
+        },
       },
     });
 

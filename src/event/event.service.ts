@@ -17,6 +17,9 @@ import {
 } from '@movapp/types';
 import { VideoService } from '@/video/video.service';
 import { randomBytes } from 'crypto';
+import { MessageService } from '@/message/message.service';
+
+const PARTICIPANTS_PREVIEW_LIMIT = 6;
 
 @Injectable()
 export class EventService {
@@ -27,6 +30,7 @@ export class EventService {
     private mediaService: MediaService,
     private videoService: VideoService,
     private fcmService: FCMService,
+    private messageService: MessageService,
   ) {}
 
   async create(data: CreateEventRequest): Promise<Event> {
@@ -52,10 +56,9 @@ export class EventService {
     const event = await this.prisma.event.findUnique({
       where: { id },
       include: {
-        admin: true,
         participants: {
           include: { user: true },
-          take: 6,
+          take: PARTICIPANTS_PREVIEW_LIMIT,
           orderBy: { joinedAt: 'desc' },
         },
         videos: {
@@ -87,15 +90,6 @@ export class EventService {
       );
     }
 
-    // Add photo URLs for admin
-    let adminProfileThumbnailUrl: string | null = null;
-    if (event.admin.profileThumbnailPath) {
-      adminProfileThumbnailUrl =
-        await this.mediaService.getPresignedDownloadUrl(
-          event.admin.profileThumbnailPath,
-        );
-    }
-
     // Add photo thumbnail URLs for participants
     const participantsWithProfileThumbnailUrls = await Promise.all(
       event.participants.map(async (participant) => {
@@ -116,12 +110,44 @@ export class EventService {
       }),
     );
 
+    // Get last message
+    const lastMessage = await this.prisma.message.findFirst({
+      where: { eventId: event.id },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            username: true,
+            profileThumbnailPath: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Add photo thumbnail URL for the last message sender
+    let lastMessageSenderThumbnailUrl: string | null = null;
+    if (lastMessage?.sender.profileThumbnailPath) {
+      lastMessageSenderThumbnailUrl =
+        await this.mediaService.getPresignedDownloadUrl(
+          lastMessage.sender.profileThumbnailPath,
+        );
+    }
+
     return {
       ...event,
       coverImageUrl,
       coverThumbnailUrl,
-      admin: { ...event.admin, profileThumbnailUrl: adminProfileThumbnailUrl },
       participants: participantsWithProfileThumbnailUrls,
+      lastMessage: lastMessage
+        ? {
+            ...lastMessage,
+            sender: {
+              ...lastMessage.sender,
+              profileThumbnailUrl: lastMessageSenderThumbnailUrl,
+            },
+          }
+        : null,
     };
   }
 
@@ -168,7 +194,7 @@ export class EventService {
         admin: true,
         participants: {
           include: { user: true },
-          take: 6,
+          take: PARTICIPANTS_PREVIEW_LIMIT,
           orderBy: { joinedAt: 'desc' },
         },
         _count: {

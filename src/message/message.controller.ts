@@ -3,23 +3,13 @@ import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
 import { MessageService } from './message.service';
 import {
   SendMessageRequest,
-  SendMessageResponse,
   EventMessagesResponse,
-  MessagePreviewResponse,
+  Message,
 } from '@movapp/types';
 
 @Controller('messages')
 export class MessageController {
   constructor(private readonly messageService: MessageService) {}
-
-  // Get message preview for event detail page
-  @Get('preview/event/:eventId/user/:userId')
-  getMessagePreview(
-    @Param('eventId') eventId: string,
-    @Param('userId') userId: string,
-  ): Promise<MessagePreviewResponse> {
-    return this.messageService.getMessagePreview(eventId, userId);
-  }
 
   // Get messages with pagination for an event
   @Get('event/:eventId/user/:userId')
@@ -40,7 +30,7 @@ export class MessageController {
     @Param('eventId') eventId: string,
     @Param('userId') userId: string,
     @Body() body: SendMessageRequest,
-  ): Promise<SendMessageResponse> {
+  ): Promise<Message> {
     return this.messageService.sendMessage(
       eventId,
       userId,
@@ -54,7 +44,7 @@ export class MessageController {
   getMessageById(
     @Param('messageId') messageId: string,
     @Param('userId') userId: string,
-  ): Promise<SendMessageResponse | null> {
+  ): Promise<Message | null> {
     return this.messageService.getMessageById(messageId, userId);
   }
 }

@@ -8,11 +8,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { MediaService } from '@/media/media.service';
 import { FCMService } from '@/push-notification/fcm.service';
 import { Logger } from '@nestjs/common';
-import {
-  SendMessageResponse,
-  EventMessagesResponse,
-  MessagePreviewResponse,
-} from '@movapp/types';
+import { EventMessagesResponse, Message } from '@movapp/types';
 
 @Injectable()
 export class MessageService {
@@ -31,30 +27,25 @@ export class MessageService {
     page: number = 1,
     limit: number = 30,
   ): Promise<EventMessagesResponse> {
-    const event = await this.verifyEventAccess(eventId, userId);
+    await this.verifyEventAccess(eventId, userId);
 
     const skip = (page - 1) * limit;
 
-    const [messages, total] = await Promise.all([
-      this.prisma.message.findMany({
-        where: { eventId },
-        include: {
-          sender: {
-            select: {
-              id: true,
-              username: true,
-              profileThumbnailPath: true,
-            },
+    const messages = await this.prisma.message.findMany({
+      where: { eventId },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            username: true,
+            profileThumbnailPath: true,
           },
         },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip,
-      }),
-      this.prisma.message.count({
-        where: { eventId },
-      }),
-    ]);
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip,
+    });
 
     // Add photo thumbnail URLs for message senders
     const messagesWithThumbnails = await Promise.all(
@@ -79,12 +70,6 @@ export class MessageService {
     return {
       messages: messagesWithThumbnails.reverse(), // Reverse to show oldest first in UI
       hasMore: messages.length === limit,
-      page,
-      total,
-      event: {
-        id: event.id,
-        name: event.name,
-      },
     };
   }
 
@@ -93,7 +78,7 @@ export class MessageService {
     userId: string,
     content: string,
     type: string = 'text',
-  ): Promise<SendMessageResponse> {
+  ): Promise<Message> {
     const event = await this.verifyEventAccess(eventId, userId);
 
     const message = await this.prisma.message.create({
@@ -145,74 +130,11 @@ export class MessageService {
     };
   }
 
-  // Get message preview for the event detail page
-  async getMessagePreview(
-    eventId: string,
-    userId: string,
-  ): Promise<MessagePreviewResponse> {
-    try {
-      await this.verifyEventAccess(eventId, userId);
-
-      // Get total message count
-      const messageCount = await this.prisma.message.count({
-        where: { eventId },
-      });
-
-      // Get last message
-      const lastMessage = await this.prisma.message.findFirst({
-        where: { eventId },
-        include: {
-          sender: {
-            select: {
-              id: true,
-              username: true,
-              profileThumbnailPath: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-
-      // Add photo thumbnail URL for the last message sender
-      let lastMessageSenderThumbnailUrl: string | null = null;
-      if (lastMessage?.sender.profileThumbnailPath) {
-        lastMessageSenderThumbnailUrl =
-          await this.mediaService.getPresignedDownloadUrl(
-            lastMessage.sender.profileThumbnailPath,
-          );
-      }
-
-      return {
-        hasMessages: messageCount > 0,
-        messageCount,
-        lastMessage: lastMessage
-          ? {
-              content: lastMessage.content,
-              sender: {
-                ...lastMessage.sender,
-                profileThumbnailUrl: lastMessageSenderThumbnailUrl,
-              },
-              createdAt: lastMessage.createdAt,
-              type: lastMessage.type,
-            }
-          : null,
-      };
-    } catch (error) {
-      // If user doesn't have access, return default
-      this.logger.error(error);
-      return {
-        hasMessages: false,
-        messageCount: 0,
-        lastMessage: null,
-      };
-    }
-  }
-
   // Get a single message with sender information
   async getMessageById(
     messageId: string,
     userId: string,
-  ): Promise<SendMessageResponse | null> {
+  ): Promise<Message | null> {
     const message = await this.prisma.message.findUnique({
       where: { id: messageId },
       include: {

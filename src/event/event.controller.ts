@@ -145,4 +145,12 @@ export class EventController {
       adminId,
     );
   }
+
+  @Delete(':id/leave')
+  leaveEvent(
+    @Param('id') eventId: string,
+    @Query('userId') userId: string,
+  ): Promise<DeleteParticipantResponse> {
+    return this.eventService.leaveEvent(eventId, userId);
+  }
 }

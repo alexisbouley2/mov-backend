@@ -752,4 +752,49 @@ export class EventService {
 
     return { message: 'Participant removed successfully' };
   }
+
+  async leaveEvent(
+    eventId: string,
+    userId: string,
+  ): Promise<{ message: string }> {
+    // Find event and verify user is a participant
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        admin: true,
+        participants: {
+          where: { userId },
+          include: { user: true },
+        },
+      },
+    });
+
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    // Check if user is the admin
+    if (event.adminId === userId) {
+      throw new Error(
+        'Admin cannot leave the event. Please delete the event instead.',
+      );
+    }
+
+    // Check if user is a participant
+    if (event.participants.length === 0) {
+      throw new Error('You are not a participant of this event');
+    }
+
+    // Delete the participant
+    await this.prisma.eventParticipant.delete({
+      where: {
+        userId_eventId: {
+          userId,
+          eventId,
+        },
+      },
+    });
+
+    return { message: 'Successfully left the event' };
+  }
 }

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { VideoService } from '@/video/video.service';
 import { PushNotificationService } from '@/push-notification/push-notification.service';
+import { MediaService } from '@/media/media.service';
 
 @Injectable()
 export class CleanupService {
@@ -10,6 +11,7 @@ export class CleanupService {
   constructor(
     private readonly videoService: VideoService,
     private readonly pushNotificationService: PushNotificationService,
+    private readonly mediaService: MediaService,
   ) {}
 
   /**
@@ -41,5 +43,15 @@ export class CleanupService {
     } catch (error) {
       this.logger.error('Failed to cleanup expired push tokens', error);
     }
+  }
+
+  /**
+   * Run media cache cleanup every 10 minutes
+   */
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  handleMediaCacheCleanup() {
+    this.logger.log('Starting media cache cleanup...');
+    this.mediaService.cleanupExpiredCacheEntries();
+    this.logger.log('Media cache cleanup completed');
   }
 }

@@ -19,9 +19,28 @@ export class MediaService {
   private readonly bucketName: string;
   private readonly logger = new Logger(MediaService.name);
 
+  // In-memory cache for presigned download URLs
+  private readonly downloadUrlCache: Map<
+    string,
+    { url: string; expiresAt: number }
+  > = new Map();
+  private readonly cacheTTL = 55 * 60 * 1000; // 55 minutes in ms (presigned URL is 1h)
+
   constructor(private configService: ConfigService<EnvConfig>) {
     this.s3Client = createS3Client(this.configService);
     this.bucketName = getBucketName(this.configService);
+  }
+
+  /**
+   * Clean up expired cache entries. Call this periodically from a cron job.
+   */
+  cleanupExpiredCacheEntries() {
+    const now = Date.now();
+    for (const [key, value] of this.downloadUrlCache.entries()) {
+      if (value.expiresAt <= now) {
+        this.downloadUrlCache.delete(key);
+      }
+    }
   }
 
   async getPresignedUploadUrl(
@@ -45,14 +64,32 @@ export class MediaService {
   }
 
   async getPresignedDownloadUrl(key: string): Promise<string> {
+    // Check cache first
+    const cached = this.downloadUrlCache.get(key);
+    const now = Date.now();
+    if (cached) {
+      if (cached.expiresAt > now) {
+        return cached.url;
+      } else {
+        // Lazy cleanup: remove expired entry
+        this.downloadUrlCache.delete(key);
+      }
+    }
+
     const command = new GetObjectCommand({
       Bucket: this.bucketName,
       Key: key,
     });
 
-    return getSignedUrl(this.s3Client, command, {
+    const url = await getSignedUrl(this.s3Client, command, {
       expiresIn: 3600,
     });
+    // Cache the URL with TTL
+    this.downloadUrlCache.set(key, {
+      url,
+      expiresAt: now + this.cacheTTL,
+    });
+    return url;
   }
 
   async fileExists(key: string): Promise<boolean> {
@@ -78,6 +115,8 @@ export class MediaService {
       });
 
       await this.s3Client.send(command);
+      // Invalidate cache for this key
+      this.downloadUrlCache.delete(key);
     } catch (error) {
       this.logger.error(`Error deleting file ${key}:`, error);
       throw error;

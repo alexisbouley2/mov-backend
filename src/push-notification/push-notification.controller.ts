@@ -25,11 +25,12 @@ export class PushNotificationController {
   }
 
   @Delete('tokens')
-  @HttpCode(HttpStatus.NO_CONTENT)
   async removeToken(
     @Body() data: { userId: string; token: string },
-  ): Promise<void> {
+  ): Promise<{ success: boolean }> {
     await this.pushNotificationService.removeToken(data.userId, data.token);
+
+    return { success: true };
   }
 
   @Get('badges/:userId')

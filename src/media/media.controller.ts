@@ -1,10 +1,19 @@
-import { Controller, Get, Query, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  BadRequestException,
+  Post,
+  Body,
+} from '@nestjs/common';
 import { MediaService } from './media.service';
 import { Logger } from '@nestjs/common';
 import {
   GetUploadUrlsResponse,
   MediaEntityType,
   UploadUrlResponse,
+  DeleteMediaResponse,
+  DeleteMediaRequest,
 } from '@movapp/types';
 
 @Controller('media')
@@ -73,6 +82,33 @@ export class MediaController {
     } catch (error) {
       this.logger.error('Error generating upload URLs:', error);
       throw new BadRequestException('Failed to generate upload URLs');
+    }
+  }
+
+  @Post('delete')
+  async deleteMedia(
+    @Body() body: DeleteMediaRequest,
+  ): Promise<DeleteMediaResponse> {
+    if (!body.fileNames || body.fileNames.length === 0) {
+      throw new BadRequestException(
+        'fileNames array is required and cannot be empty',
+      );
+    }
+
+    if (!body.userId) {
+      throw new BadRequestException('userId is required');
+    }
+
+    try {
+      await this.mediaService.deleteMultipleFiles(body.fileNames);
+
+      return {
+        success: true,
+        message: 'Media files deleted successfully',
+      };
+    } catch (error) {
+      this.logger.error('Error deleting media files:', error);
+      throw new BadRequestException('Failed to delete media files');
     }
   }
 }

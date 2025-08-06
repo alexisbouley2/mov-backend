@@ -112,6 +112,7 @@ export class FirebaseAdminService implements OnModuleInit {
         android: {
           priority: 'high',
           notification: {
+            tag: data?.eventId, //allow to detect the eventId for android in mobile
             priority: 'high',
             defaultSound: true,
             defaultVibrateTimings: true,

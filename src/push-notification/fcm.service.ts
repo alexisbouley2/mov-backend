@@ -54,29 +54,47 @@ export class FCMService {
         messageContent: data.messageContent,
       };
 
-      // Créer les enregistrements de notification et envoyer les notifications en parallèle
-      const sendPromises = recipientTokens.map(async (tokenData) => {
-        // Créer l'enregistrement de notification pour le badge
-        await this.pushNotificationService.createNotification({
-          userId: tokenData.userId,
-          eventId: data.eventId,
-          type: 'new_message',
-        });
+      // Grouper les tokens par userId
+      const tokensByUser = recipientTokens.reduce(
+        (acc, tokenData) => {
+          if (!acc[tokenData.userId]) {
+            acc[tokenData.userId] = [];
+          }
+          acc[tokenData.userId].push(tokenData);
+          return acc;
+        },
+        {} as Record<string, typeof recipientTokens>,
+      );
 
-        // Obtenir le nombre total de notifications non lues pour ce user
-        const badgeCount =
-          await this.pushNotificationService.getUnreadNotificationCount(
-            tokenData.userId,
+      // Créer les enregistrements de notification et envoyer les notifications en parallèle
+      const sendPromises = Object.entries(tokensByUser).map(
+        async ([userId, userTokens]) => {
+          // Créer l'enregistrement de notification pour le badge (une seule fois par user)
+          await this.pushNotificationService.createNotification({
+            userId,
+            eventId: data.eventId,
+            type: 'new_message',
+          });
+
+          // Obtenir le nombre total de notifications non lues pour ce user (une seule fois par user)
+          const badgeCount =
+            await this.pushNotificationService.getUnreadNotificationCount(
+              userId,
+            );
+
+          // Envoyer la notification pour chaque token de cet utilisateur
+          const userSendPromises = userTokens.map((tokenData) =>
+            this.sendFCMNotification(
+              tokenData.token,
+              notification,
+              payloadData,
+              badgeCount,
+            ),
           );
 
-        // Envoyer la notification avec le bon badge count
-        return this.sendFCMNotification(
-          tokenData.token,
-          notification,
-          payloadData,
-          badgeCount,
-        );
-      });
+          return Promise.allSettled(userSendPromises);
+        },
+      );
 
       await Promise.allSettled(sendPromises);
     } catch (error) {

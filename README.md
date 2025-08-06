@@ -1,112 +1,135 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# MOV Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A NestJS backend API for the MOV mobile app, handling events, media uploads, user management, and push notifications.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Prerequisites
 
-## Description
+- Node.js (v20+)
+- npm or yarn
+- Docker (for local testing and deployment)
+- Supabase account
+- Firebase project
+- Cloudflare account
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Setup
 
-## Project setup
+### 1. Install Dependencies
 
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
+### 2. Environment Configuration
+
+Create a `.env.local` file based on `.env.example` with your actual values:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cp .env.example .env.local
 ```
 
-## Docker
+Then update the values in `.env.local` with your actual credentials for:
 
-You can also run the application using Docker:
+- Database URL (Supabase)
+- Supabase service role key
+- Firebase credentials
+- Cloudflare R2 credentials
+- Twilio credentials
+
+````
+
+### 3. Firebase Setup
+
+1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
+2. Go to Project Settings > Service Accounts
+3. Generate a new private key (JSON file)
+4. Extract the following values and add them to your `.env.local`:
+   - `project_id` → `FIREBASE_PROJECT_ID`
+   - `private_key` → `FIREBASE_PRIVATE_KEY`
+   - `client_email` → `FIREBASE_CLIENT_EMAIL`
+
+### 4. Supabase Setup
+
+1. Create a Supabase project at [Supabase](https://supabase.com/)
+2. Get your database URL and service role key from Settings > API
+3. Follow the detailed setup instructions in [SUPABASE_SETUP.md](./SUPABASE_SETUP.md)
+4. Run Prisma commands:
+
+```bash
+# Generate Prisma client
+npm run prisma:generate
+
+# Run database migrations
+npm run migrate:dev
+
+# Reset database (if needed)
+npm run migrate:reset
+````
+
+### 5. Cloudflare R2 Setup
+
+1. Create a Cloudflare account and enable R2 storage
+2. Create a new R2 bucket for media storage
+3. Create API tokens with R2 permissions
+4. Configure CORS settings for your bucket
+5. Update your `.env.local` with the Cloudflare credentials
+
+### 6. Local Development
+
+```bash
+# Development mode
+npm run start:dev
+
+# Production mode
+npm run start:prod
+
+# Debug mode
+npm run start:debug
+```
+
+### 7. Docker (Local Testing)
 
 ```bash
 # Build the Docker image
-$ docker build -t mov-backend .
+docker build -t mov-backend .
 
 # Run the container
-$ docker run -p 3000:3000 --env-file .env.local mov-backend
-```
-
-**Note:** Make sure you have a `.env.local` file with the necessary environment variables before running the Docker container.
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+docker run -p 3000:3000 --env-file .env.local mov-backend
 ```
 
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+The application is currently deployed on Railway, but can be deployed on any service that supports Docker containers.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Railway Deployment
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+1. Connect your repository to Railway
+2. Railway will automatically detect the Dockerfile
+3. Set environment variables in Railway dashboard
+4. Deploy
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Other Platforms
 
-## Resources
+The application can be deployed on any platform that supports Docker:
 
-Check out a few resources that may come in handy when working with NestJS:
+- AWS ECS
+- Google Cloud Run
+- DigitalOcean App Platform
+- Heroku (with Docker)
+- Vercel (with Docker)
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## API Endpoints
 
-## Support
+The API provides endpoints for:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- User management and authentication
+- Event creation and management
+- Media upload and processing
+- Push notifications
+- Real-time messaging
 
-## Stay in touch
+## Project Structure
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- `src/` - NestJS application source code
+- `prisma/` - Database schema and migrations
+- `test/` - Test files
+- `Dockerfile` - Docker configuration for deployment
